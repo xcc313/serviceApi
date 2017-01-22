@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE taglib PUBLIC "-//Sun Microsystems, Inc.//DTD JSP Tag Library 1.2//EN"
+                        "http://java.sun.com/dtd/web-jsptaglibrary_1_2.dtd">
+<taglib>
+	<tlib-version>1.0</tlib-version>
+	<jsp-version>1.2</jsp-version>
+	<short-name>pagebar</short-name>
+	<uri>http://www.eeepay.cn/pos/web/pagebar</uri>
+	<tag>
+		<name>pagebar</name>
+		<tag-class>com.lzj.utils.Pagebar</tag-class>
+		<body-content>empty</body-content>
+		<attribute>
+			<name>total</name>
+			<required>true</required>
+			<rtexprvalue>true</rtexprvalue>
+		</attribute>
+		<attribute>
+			<name>current</name>
+			<required>true</required>
+			<rtexprvalue>true</rtexprvalue>
+		</attribute>
+		<attribute>
+			<name>skipParams</name>
+			<rtexprvalue>true</rtexprvalue>
+		</attribute>
+		<attribute>
+			<name>anchor</name>
+			<required>false</required>
+			<description>锚定的名称，用于保持页面跳转之后的位置</description>
+		</attribute>
+	</tag>
+</taglib>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding" native2AsciiForPropertiesFiles="true" defaultCharsetForPropertiesFiles="UTF-8">
+    <file url="file://$PROJECT_DIR$/src/main/webapp/css/jquery-weui.min.css" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/images/choose.png" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/images/mainIcon.ico" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/images/qrcode.png" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/images/qrcodeMain.jpg" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/js/city-picker-0.7.2.min.js" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/js/city-picker.min.js" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/js/jquery-weui-0.7.2.min.js" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/webapp/js/jquery-weui.min.js" charset="UTF-8" />
+    <file url="PROJECT" charset="UTF-8" />
+  </component>
+</project>

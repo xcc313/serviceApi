@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd 
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd"
+	default-lazy-init="false">
+
+	<description>quartz Configuration</description>
+
+    <!-- lzj   每天凌晨刷新用户今日是否签到的定时任务 -->
+    <!-- 触发器  refreshPublisherTrigger 执行定时任务的类和方法 -->   
+    <bean id="refreshSignDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">    
+            <bean class="com.lzj.action.UserAction"></bean>
+        </property>    
+        <property name="targetMethod">    
+            <value>refreshSign</value>
+        </property>    
+    </bean>
+    <!-- 配置触发器  refreshSignTrigger -->
+    <bean id="refreshSignTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+        <property name="jobDetail">    
+            <ref bean="refreshSignDetail"/> <!-- 触发器触发的 执行定时任务的bean -->
+        </property>    
+        <property name="cronExpression">    
+             <value>0 0 0 * * ?</value>
+        </property>    
+    </bean>
+
+    <!-- lzj   定时推送笑话 -->
+    <bean id="sendJokeDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <bean class="com.lzj.action.ApiAction"></bean>
+        </property>
+        <property name="targetMethod">
+            <value>sendJoke</value>
+        </property>
+    </bean>
+    <!-- 配置触发器  sendJokeTrigger -->
+    <bean id="sendJokeTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+        <property name="jobDetail">
+            <ref bean="sendJokeDetail"/> <!-- 触发器触发的 执行定时任务的bean -->
+        </property>
+        <property name="cronExpression">
+            <value>0 20 0/1 * * ?</value>
+        </property>
+    </bean>
+
+    <!-- ======================== 调度工厂 ======================== -->
+	<bean id="SpringJobSchedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean"> 
+    <!--必须，QuartzScheduler 延时启动，应用启动后 QuartzScheduler 再启动-->  
+    <property name="startupDelay" value="60"/>   
+    <property name="triggers">  
+        <list>
+            <ref bean="refreshSignTrigger"/>
+            <ref bean="sendJokeTrigger"/>
+        </list>
+    </property> 
+    <property name="quartzProperties">
+	   <props>
+	    <prop key="org.quartz.scheduler.skipUpdateCheck">true</prop>
+	   </props>
+	  </property> 
+	</bean> 
+</beans>
