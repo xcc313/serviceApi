@@ -351,8 +351,8 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = weixinService.selectUserByOpenId(openid);
 					if(userMap==null || userMap.isEmpty()) {
 						new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/jokePage?userNo="+userNo);
 				}
@@ -366,8 +366,8 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = weixinService.selectUserByOpenId(openid);
 					if(userMap==null || userMap.isEmpty()) {
 						new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/lotteryPage?userNo="+userNo);
 				}
@@ -381,8 +381,8 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = weixinService.selectUserByOpenId(openid);
 					if(userMap==null || userMap.isEmpty()) {
 						new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/zipcodePage?userNo="+userNo);
 				}
@@ -396,8 +396,8 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = weixinService.selectUserByOpenId(openid);
 					if(userMap==null || userMap.isEmpty()) {
 						new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/verifiedPage?userNo="+userNo);
 				}
@@ -411,8 +411,8 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = weixinService.selectUserByOpenId(openid);
 					if(userMap==null || userMap.isEmpty()) {
 						new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/dishonestyPage?userNo="+userNo);
 				}
@@ -426,8 +426,8 @@ public class WxAction extends BaseController{
 					Map<String, Object> userMap = weixinService.selectUserByOpenId(openid);
 					if (userMap == null || userMap.isEmpty()) {
 						new UserAction(userService, apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/user/userInfo?userNo=" + userNo);
 				}
@@ -441,8 +441,8 @@ public class WxAction extends BaseController{
 					Map<String, Object> userMap = weixinService.selectUserByOpenId(openid);
 					if (userMap == null || userMap.isEmpty()) {
 						new UserAction(userService, apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
 					}
-					userMap = weixinService.selectUserByOpenId(openid);
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/user/rechargeCoin?userNo=" + userNo);
 				}

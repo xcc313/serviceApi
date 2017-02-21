@@ -1,6 +1,7 @@
 package com.lzj.action;
 
 import com.alibaba.fastjson.JSON;
+import com.lzj.utils.DESPlus;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -149,6 +150,34 @@ public class BaseController {
 			 value = (value==null) ? null : value.trim();
 			 params.put(key.toString(), value);
 		 }
+	}
+
+	/**
+	 * 解密商户号
+	 * @param secretUserNo
+	 * @return
+	 * @throws Exception
+	 */
+	public String decryptUserNo(String secretUserNo) throws Exception{
+		return new DESPlus("luyaolilzjsuchafuwu").decrypt(secretUserNo);
+	}
+
+	/**
+	 * 加密商户号
+	 * @param userNo
+	 * @return
+	 * @throws Exception
+	 */
+	public String encryptUserNo(String userNo) throws Exception{
+		return new DESPlus("luyaolilzjsuchafuwu").encrypt(userNo);
+	}
+
+	public boolean isEmpty(String str) {
+		return str == null || str.length() == 0 || "null".equals(str);
+	}
+
+	public boolean isNotEmpty(String str){
+		return !isEmpty(str);
 	}
   
 	

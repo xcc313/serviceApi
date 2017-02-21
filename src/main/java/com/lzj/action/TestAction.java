@@ -293,6 +293,8 @@ public class TestAction  extends BaseController {
                 model.put("errorCode",userNo);
                 return "errorPage";
             }else{
+                String encryptUserNo = encryptUserNo(userNo);
+                userMap.put("encryptUserNo",encryptUserNo);
                 model.put("userMap", userMap);
                 return "user/userInfo";
             }

@@ -147,6 +147,10 @@
             $.alert("正在开发中...");
         }
 
+        function toMyPayCode(){
+            window.location.href='${ctx}/pay/toMyPayCode?userNo=${userMap.encryptUserNo}';
+        }
+
         function toZFBCode(){
             window.location.href='${ctx}/user/zfbCode?userNo=${userMap.user_no}';
         }
@@ -175,30 +179,70 @@
                 微币:${userMap.wei_coin }
             </p>
         </a>
-        <a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell" id="showDialog1">
-            <div class="weui_grid_icon">
-                <img src="${ctx}/images/refresh-1.png" alt="刷新个人信息">
-            </div>
-            <p class="weui_grid_label">
-                个人信息更新
-            </p>
-        </a>
-        <%--<a href="javascript:toInviteCode()" class="weui_grid js_grid" data-id="cell">
-            <div class="weui_grid_icon">
-                <img src="${ctx}/images/inviteCode.png" alt="我的邀请码">
-            </div>
-            <p class="weui_grid_label">
-                我的邀请码
-            </p>
-        </a>--%>
-        <a href="javascript:toZFBCode()" class="weui_grid js_grid" data-id="cell">
-            <div class="weui_grid_icon">
-                <img src="${ctx}/images/zfb.png" alt="支付宝收款码">
-            </div>
-            <p class="weui_grid_label">
-                我的收款码
-            </p>
-        </a>
+        <c:choose>
+            <c:when test="${userMap.user_no eq '802576682'}">
+                <a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/balance.png" alt="余额">
+                    </div>
+                    <p class="weui_grid_label">
+                        余额:${userMap.balance}
+                    </p>
+                </a>
+                <a href="javascript:toMyPayCode()" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/payCode.png" alt="我的收款码">
+                    </div>
+                    <p class="weui_grid_label">
+                        我的收款码
+                    </p>
+                </a>
+                <a href="javascript:toBill()" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/bill.png" alt="余额账单">
+                    </div>
+                    <p class="weui_grid_label">
+                        余额账单
+                    </p>
+                </a>
+                <a href="javascript:toBankEdit()" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/bankEdit.png" alt="结算卡修改">
+                    </div>
+                    <p class="weui_grid_label">
+                        结算卡修改
+                    </p>
+                </a>
+                <a href="javascript:toMyAgent()" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/myAgent.png" alt="我的下级">
+                    </div>
+                    <p class="weui_grid_label">
+                        我的下级
+                    </p>
+                </a>
+            </c:when>
+            <c:otherwise>
+                <a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell" id="showDialog1">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/refresh-1.png" alt="刷新个人信息">
+                    </div>
+                    <p class="weui_grid_label">
+                        个人信息更新
+                    </p>
+                </a>
+                <a href="javascript:toZFBCode()" class="weui_grid js_grid" data-id="cell">
+                    <div class="weui_grid_icon">
+                        <img src="${ctx}/images/zfb.png" alt="我的收款码">
+                    </div>
+                    <p class="weui_grid_label">
+                        我的收款码
+                    </p>
+                </a>
+
+            </c:otherwise>
+        </c:choose>
+
     </div>
 
     <div id="rechargePopup" class="weui-popup-container popup-bottom">

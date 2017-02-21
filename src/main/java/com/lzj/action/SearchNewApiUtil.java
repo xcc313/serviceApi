@@ -1,7 +1,6 @@
 package com.lzj.action;
 
 import com.alibaba.druid.util.StringUtils;
-import com.lzj.utils.DESPlus;
 import com.lzj.utils.HttpUtils;
 import com.lzj.utils.LZJUtil;
 import com.lzj.utils.MD5;
@@ -10,7 +9,7 @@ import com.lzj.utils.encryptor.RSAUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 
-import java.io.IOException;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -93,7 +92,7 @@ public class SearchNewApiUtil {
         String url = "http://msg.yfbpay.cn/msgplatform/rz/smrz";
         String secretKey = "ciVUz2k96M8z11g5Jp9J06z2YYr077bD";
         String publicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDX/JCJpwFzUPDsxZEwZ89wxQXk2RzEN7zk9SH4pyl3KsCVS+zjmdMj6QOMRvqdTzgWzmt0Fy8XriUbPlzHAzVSrtcfjr7Ok1Zba/O41moUbcUUzHzJnPG0vEBOXyssBC70bTjNO0m47wmas5fk7GiD0zvxLnjXwDlTW3frpj3JxwIDAQAB";
-        String searchUrl1 = "cardNum=" + bankcard + "&idCard=" + idcard + "&userName=" + realname + "&phoneNum=" + mobileNo;
+        String searchUrl1 = "cardNum=" + bankcard + "&idCard=" + idcard + "&userName=" + URLEncoder.encode(realname,"UTF-8") + "&phoneNum=" + mobileNo;
         System.out.println("searchUrl1:"+searchUrl1);
         String paydata = Base64Utils.encode(RSAUtils.encryptByPublicKey(searchUrl1.getBytes(), publicKey));
         String searchUrl2 = "merId=" + merId + "&merName=" + merName + "&orderNumber=" + orderNumber + "&orderTime=" + orderTime + "&paydata=" + paydata;
