@@ -183,6 +183,10 @@
             window.location.href='${ctx}/user/zfbCode?userNo=${userMap.user_no}';
         }
 
+        function toBill(){
+            window.location.href='${ctx}/pay/balanceBill?userNo=${userMap.encryptUserNo}';
+        }
+
         function extraction(){
             var balance = "${userMap.balance}";
             if(balance<=0){

@@ -1,5 +1,6 @@
 package com.lzj.action;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.lzj.fc_pay.wofu.WoFuAction;
 import com.lzj.fc_pay.wofu.WoFuConfig;
@@ -20,9 +21,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -149,6 +148,104 @@ public class PayAction extends BaseController {
             model.put("errorMsg","系统异常");
             model.put("errorCode", "toMyPayCode100000000");
             return "errorPage";
+        }
+    }
+
+    @RequestMapping(value="balanceBill")
+    public String balanceBill(final ModelMap model, @RequestParam Map<String,String> params,HttpServletResponse response){
+        log.info("-------------balanceBill到余额账单页面----------params="+params);
+        String encryptUserNo = params.get("userNo");
+        try {
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                model.put("errorMsg","无此用户");
+                model.put("errorCode","toMyPayCode"+encryptUserNo);
+                return "errorPage";
+            }
+            List<Map<String,Object>> balanceHistoryList = apiService.getListMethod("balance_history", whereMap, "id", "desc", 10);
+            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd HH:mm");
+            for(Map<String,Object> tmpMap:balanceHistoryList){
+                String createTime = sdf.format(tmpMap.get("create_time"));
+                tmpMap.put("create_time",createTime);
+                String method = String.valueOf(tmpMap.get("method"));
+                if("IN".equals(method)){
+                    method = "入账";
+                }else if("OUT".equals(method)){
+                    method = "出账";
+                }
+                tmpMap.put("method",method);
+                //查询关联订单号
+                String channel = String.valueOf(tmpMap.get("channel"));
+                String channelId = String.valueOf(tmpMap.get("channel_id"));
+                Map<String,Object> orderHsiatoryMap = payService.selectOrderByHistory(channel,channelId);
+                if(orderHsiatoryMap!=null && !orderHsiatoryMap.isEmpty()){
+                    String order_no = String.valueOf(orderHsiatoryMap.get("order_no"));
+                    tmpMap.put("order_no",order_no);
+                    tmpMap.put("trans_status",orderHsiatoryMap.get("trans_status"));
+                }
+            }
+            model.put("balanceHistoryList",balanceHistoryList);
+            model.put("userNo",encryptUserNo);
+            return "user/balanceBill";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.put("errorMsg","系统异常");
+            model.put("errorCode", "toMyPayCode100000000");
+            return "errorPage";
+        }
+    }
+
+    @RequestMapping(value="loadMoreBalanceBill")
+    public void loadMoreBalanceBill( @RequestParam Map<String,String> params,HttpServletResponse response){
+        log.info("-------------loadMoreBalanceBill加载更多余额账单----------params="+params);
+        String encryptUserNo = params.get("userNo");
+        List<Map<String,Object>> balanceHistoryList = new ArrayList<>();
+        try {
+            String index = params.get("index");
+            if(StringUtils.isEmpty(index)){
+                index = "0";
+            }
+            int startIndex = Integer.parseInt(index)*10;
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                return;
+            }
+            balanceHistoryList = apiService.getListMethod("balance_history", whereMap, "id", "desc", startIndex,10);
+            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd HH:mm");
+            for(Map<String,Object> tmpMap:balanceHistoryList){
+                String createTime = sdf.format(tmpMap.get("create_time"));
+                tmpMap.put("create_time",createTime);
+                String method = String.valueOf(tmpMap.get("method"));
+                if("IN".equals(method)){
+                    method = "入账";
+                }else if("OUT".equals(method)){
+                    method = "出账";
+                }
+                tmpMap.put("method",method);
+                //查询关联订单号
+                String channel = String.valueOf(tmpMap.get("channel"));
+                String channelId = String.valueOf(tmpMap.get("channel_id"));
+                Map<String,Object> orderHsiatoryMap = payService.selectOrderByHistory(channel,channelId);
+                if(orderHsiatoryMap!=null && !orderHsiatoryMap.isEmpty()){
+                    String order_no = String.valueOf(orderHsiatoryMap.get("order_no"));
+                    tmpMap.put("order_no",order_no);
+                    tmpMap.put("trans_status",orderHsiatoryMap.get("trans_status"));
+                }
+            }
+            String json = JSON.toJSONString(balanceHistoryList);
+            System.out.println("----loadMoreBalanceBill加载更多余额账单,json-----" + json);
+            outJson(json, response);
+            return ;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
         }
     }
 
@@ -370,7 +467,7 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
-            if(!isAmount(String.valueOf(balance))){
+            if (!isAmount(String.valueOf(balance))){
                 resultMap.put("success",false);
                 resultMap.put("msg", "金额非法");
                 outJson(JSONObject.toJSONString(resultMap), response);
@@ -385,8 +482,8 @@ public class PayAction extends BaseController {
             String transAmount = String.valueOf(extractionAmount);
             String callbackUrl = payService.getParamValue("pay_callback_url");
             Map<String,Object> extractionResultMap = payService.extraction(userNo, orderNo);
-            log.info("插入代付订单结果extractionResultMap="+extractionResultMap);
-            Boolean resultBoo = (Boolean)extractionResultMap.get("success");
+            log.info("插入代付订单结果extractionResultMap=" + extractionResultMap);
+            Boolean resultBoo = (Boolean) extractionResultMap.get("success");
             String msg = String.valueOf(extractionResultMap.get("msg"));
             if(resultBoo){
                 Map<String,Object> purseOrderResultMap = new WoFuAction().purseCashCreateOrder(orderNo, accountName, accountNo, remark, transAmount, null, callbackUrl, null, null);
@@ -428,7 +525,7 @@ public class PayAction extends BaseController {
             }
         }catch (Exception e){
             e.printStackTrace();
-            resultMap.put("success",false);
+            resultMap.put("success", false);
             resultMap.put("msg", "系统异常");
             outJson(JSONObject.toJSONString(resultMap), response);
             return;
@@ -438,7 +535,7 @@ public class PayAction extends BaseController {
     }
 
     @RequestMapping(value="callbackWow")
-    public void callbackWow(@RequestParam Map<String,String> params, HttpServletResponse response) {
+    public void callbackWow(@RequestParam Map<String, String> params, HttpServletResponse response) {
         log.info("---------callbackWow---------params=" + params);
         try {
             String dataStr = new DESPlus(WoFuConfig.SECRET_KEY).decrypt(params.get("data"));
@@ -474,7 +571,7 @@ public class PayAction extends BaseController {
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         String appId = payService.getParamValue("AppID");
                         String weixinUrl = payService.getParamValue("weixinUrl");
-                        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do");
+                        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do","UTF-8");
                         String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
                         String transAmount = String.valueOf(orderMap.get("trans_amount"));
                         String userNo = String.valueOf(orderMap.get("user_no"));

@@ -103,7 +103,7 @@ public class ApiService {
 	 * @param whereMap 查询where条件map
 	 * @param soreColumn 排序字段
 	 * @param sort 排序规则 desc倒序  asc顺序
-	 * @param limitNum  查询数目
+	 * @param limitNum  查询行数
 	 * @return List
 	 * @author lzj
 	 */
@@ -128,6 +128,47 @@ public class ApiService {
 		sbSql.append(" order by ").append(soreColumn).append(" ").append(sort);
 		if(limitNum!=0){
 			sbSql.append(" limit ").append(limitNum);
+		}
+		String sql = sbSql.toString();
+		if(list!=null && !list.isEmpty()){
+			return dao.find(sql, list.toArray());
+		}else{
+			return dao.find(sql);
+		}
+	}
+
+	/**
+	 * 统一查询方法，返回List
+	 * @param tableName 要查询的表
+	 * @param whereMap 查询where条件map
+	 * @param soreColumn 排序字段
+	 * @param sort 排序规则 desc倒序  asc顺序
+	 * @param limitBeginNum  查询开始行
+	 * @param limitNum  查询总行数
+	 * @return List
+	 * @author lzj
+	 */
+	public List getListMethod(String tableName,Map<String,Object> whereMap,String soreColumn,String sort,int limitBeginNum,int limitNum){
+		StringBuffer sbSql = new StringBuffer("select * from ");
+		sbSql.append(tableName).append(" where 1=1 ");
+		List<Object> list = new ArrayList<Object>();
+		if(whereMap!=null && !whereMap.isEmpty()){
+			Set<Map.Entry<String, Object>> entries = whereMap.entrySet();
+			for (Map.Entry<String, Object> entry:entries) {
+				String entryValue = String.valueOf(entry.getValue());
+				if(entryValue!=null && !"".equals(entryValue)){
+					if(entryValue.contains("%")){
+						sbSql.append(" and ").append(entry.getKey()).append(" like ? ");
+					}else{
+						sbSql.append(" and ").append(entry.getKey()).append("=? ");
+					}
+					list.add(entry.getValue());
+				}
+			}
+		}
+		sbSql.append(" order by ").append(soreColumn).append(" ").append(sort);
+		if(limitNum!=0){
+			sbSql.append(" limit ").append(limitBeginNum+","+limitNum);
 		}
 		String sql = sbSql.toString();
 		if(list!=null && !list.isEmpty()){

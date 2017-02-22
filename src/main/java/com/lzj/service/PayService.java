@@ -254,4 +254,22 @@ public class PayService {
         }
         return extractionResultMap;
     }
+
+    //根据channel,channelId查询相关
+    public Map<String,Object> selectOrderByHistory(String channel,String channelId){
+        if("1".equals(channel)){
+            String sql = "select order_no,case when trans_status='0' then '交易中' when trans_status='1' then '交易成功' when trans_status='2' then '交易失败' when trans_status='3' then '交易未知' end trans_status from pay_order where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("2".equals(channel)){
+            String sql = "select order_no,case when cash_status='0' then '提现中' when cash_status='1' then '提现成功' when cash_status='2' then '提现失败' when cash_status='3' then '提现未知' end trans_status from purse_cash where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("3".equals(channel)){
+            String sql = "select order_no,case when back_status='0' then '未冲正' when back_status='1' then '冲正成功' when back_status='2' then '冲正失败' when back_status='3' then '冲正未知' end trans_status from purse_cash where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("4".equals(channel)){
+            return null;
+        }else{
+            return null;
+        }
+    }
 }
