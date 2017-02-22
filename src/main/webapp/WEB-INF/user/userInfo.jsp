@@ -19,6 +19,34 @@
     </style>
     <script type="text/javascript">
         $(function(){
+            function onBridgeReady() {
+                WeixinJSBridge.call('hideOptionMenu');
+            }
+            if (typeof WeixinJSBridge == "undefined") {
+                if (document.addEventListener) {
+                    document.addEventListener('WeixinJSBridgeReady', onBridgeReady, false);
+                } else if (document.attachEvent) {
+                    document.attachEvent('WeixinJSBridgeReady', onBridgeReady);
+                    document.attachEvent('onWeixinJSBridgeReady', onBridgeReady);
+                }
+            } else {
+                onBridgeReady();
+            }
+/*
+
+            // 对浏览器的UserAgent进行正则匹配，不含有微信独有标识的则为其他浏览器
+            var useragent = navigator.userAgent;
+            if (useragent.match(/MicroMessenger/i) != 'MicroMessenger') {
+                // 这里警告框会阻塞当前页面继续加载
+                alert('请使用微信浏览器访问！');
+                // 以下代码是用javascript强行关闭当前页面
+                var opened = window.open('about:blank', '_self');
+                opened.opener = null;
+                opened.close();
+            }
+
+*/
+
             $("#showDialog1").click(function(){
                 //审核通过
                 $.confirm("刷新个人信息，如头像，名称等请按确定", function() {
@@ -155,6 +183,44 @@
             window.location.href='${ctx}/user/zfbCode?userNo=${userMap.user_no}';
         }
 
+        function extraction(){
+            var balance = "${userMap.balance}";
+            if(balance<=0){
+                $.alert("无需提现");
+            }else{
+                $.confirm("提现金额：${userMap.balance}<br/>手续费：${userMap.extraction_fee}<br/>到账金额：${userMap.balance-userMap.extraction_fee}","确认提现", function() {
+                    $.showLoading("提现中...");
+                    var i = Math.random() * 4;
+                    var abc = parseInt(i);
+                    $.getJSON("${ctx}/pay/purseCashCreateOrder", {
+                        userNo: '${userMap.encryptUserNo}'
+                    }, function (data) {
+                        $.hideLoading();
+                        if(!jQuery.isEmptyObject(data)){
+                            var params = eval(data);
+                            var success = params.success;
+                            var msg = params.msg;
+                            if(success){
+                                $.alert("提现成功",function(){
+                                    WeixinJSBridge.call('closeWindow');
+                                });
+                            }else{
+                                $.alert(msg,function(){
+                                    WeixinJSBridge.call('closeWindow');
+                                });
+                            }
+                        }else{
+                            $.alert("提现异常，请稍后重试",function(){
+                                WeixinJSBridge.call('closeWindow');
+                            });
+                        }
+                    })
+                }, function() {
+                    //点击取消后的回调函数
+                });
+            }
+        }
+
         function isNullOrEmpty(strVal) {
             if (strVal == '' || strVal == null || strVal == undefined) {
                 return true;
@@ -180,8 +246,8 @@
             </p>
         </a>
         <c:choose>
-            <c:when test="${userMap.user_no eq '802576682'}">
-                <a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell">
+            <c:when test="${userMap.user_no eq '802576682' || userMap.user_no eq '100000001'}">
+                <a href="javascript:extraction();" class="weui_grid js_grid" data-id="cell">
                     <div class="weui_grid_icon">
                         <img src="${ctx}/images/balance.png" alt="余额">
                     </div>

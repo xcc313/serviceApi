@@ -1,10 +1,12 @@
 package com.lzj.fc_pay.wofu;
 
+import com.alibaba.fastjson.JSONObject;
 import com.lzj.utils.DESPlus;
 import com.lzj.utils.LZJUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -49,9 +51,28 @@ public class WoFuAction {
      * @param cnaps 选填 联行号*对公代付填写
      * @return
      */
-    public Map<String, Object> purseCashCreateOrder(String orderNo, String accountName, String accountNo, String remark, String transAmount, String bankFullName, String callbackUrl, String accountType, String cnaps) {
+    public Map<String, Object> purseCashCreateOrder(String orderNo, String accountName, String accountNo, String remark, String transAmount, String bankFullName, String callbackUrl, String accountType, String cnaps) throws Exception{
         log.info("------------代付下单--------------");
-        return null;
+        Map<String,Object> paramsMap = new HashMap<>();
+        paramsMap.put("bizName","transfer");
+        Map<String,String> innerMap = new HashMap<>();
+        innerMap.put("orderNo",orderNo);
+        innerMap.put("accountName",accountName);
+        innerMap.put("accountNo",accountNo);
+        innerMap.put("remark",remark);
+        innerMap.put("transAmount", transAmount);
+        innerMap.put("callbackUrl", callbackUrl);
+        paramsMap.put("data",innerMap);
+        String jsonStr = JSONObject.toJSONString(paramsMap);
+        log.info("------------代付下单jsonStr--------------"+jsonStr);
+        DESPlus des = new DESPlus(WoFuConfig.SECRET_KEY);
+        String json = des.encrypt(jsonStr);
+        String url = WoFuConfig.TRANS_URL+"?appKey="+WoFuConfig.APP_KEY+"&data="+json;
+        String req = LZJUtil.sendGet(url,"UTF-8");
+        log.info("req=" + req);
+        String responseStr = des.decrypt(req);
+        log.info("responseStr=" + responseStr);
+        return LZJUtil.jsonToMap(responseStr);
     }
 
     public static void main(String[] args) {

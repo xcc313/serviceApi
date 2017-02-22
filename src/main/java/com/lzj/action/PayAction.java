@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +38,8 @@ public class PayAction extends BaseController {
     private PayService payService;
     @Resource
     private ApiService apiService;
+    @Resource
+    private WxAction wxAction;
 
     @RequestMapping(value="reg")
     public void reg(@RequestParam Map<String,String> params,HttpServletResponse response){
@@ -334,8 +337,108 @@ public class PayAction extends BaseController {
         }
     }
 
+    @RequestMapping(value="purseCashCreateOrder")
+    public void purseCashCreateOrder(@RequestParam Map<String,String> params,HttpServletResponse response){
+        log.info("-------------purseCashCreateOrder代付下单-------------params=" + params);
+        Map<String,Object> resultMap = new HashMap<String, Object>();
+        try{
+            String userNo = decryptUserNo(params.get("userNo"));
+            if(StringUtils.isEmpty(userNo)){
+                resultMap.put("success",false);
+                resultMap.put("msg", "必要信息为空");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
+            if(userMap==null || userMap.isEmpty()){
+                resultMap.put("success",false);
+                resultMap.put("msg", "用户不存在");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            String userStatus = String.valueOf(userMap.get("status"));
+            if(!"NORMAL".equals(userStatus)){
+                resultMap.put("success",false);
+                resultMap.put("msg", "用户状态异常");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            BigDecimal balance = new BigDecimal(String.valueOf(userMap.get("balance")));
+            if(balance.compareTo(new BigDecimal("0"))!=1){
+                resultMap.put("success",false);
+                resultMap.put("msg", "无需提现");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            if(!isAmount(String.valueOf(balance))){
+                resultMap.put("success",false);
+                resultMap.put("msg", "金额非法");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            BigDecimal extractionFee = new BigDecimal(String.valueOf(userMap.get("extraction_fee")));
+            BigDecimal extractionAmount = balance.subtract(extractionFee);
+            String orderNo = String.valueOf(System.nanoTime());
+            String accountName = String.valueOf(userMap.get("real_name"));
+            String accountNo = String.valueOf(userMap.get("bank_no"));
+            String remark = "速查服务";
+            String transAmount = String.valueOf(extractionAmount);
+            String callbackUrl = payService.getParamValue("pay_callback_url");
+            Map<String,Object> extractionResultMap = payService.extraction(userNo, orderNo);
+            log.info("插入代付订单结果extractionResultMap="+extractionResultMap);
+            Boolean resultBoo = (Boolean)extractionResultMap.get("success");
+            String msg = String.valueOf(extractionResultMap.get("msg"));
+            if(resultBoo){
+                Map<String,Object> purseOrderResultMap = new WoFuAction().purseCashCreateOrder(orderNo, accountName, accountNo, remark, transAmount, null, callbackUrl, null, null);
+                log.info("上游提现下单返回，purseOrderResultMap="+purseOrderResultMap);
+                Map<String,String> headMap = (Map<String,String>)purseOrderResultMap.get("head");
+                Map<String,String> contentMap = (Map<String,String>)purseOrderResultMap.get("content");
+                String bizName = headMap.get("biz_name");
+                String resultCode = headMap.get("result_code");
+                if("transfer".equals(bizName)){
+                    if("SEND".equals(resultCode)){
+                        String order_no = contentMap.get("order_no");
+                        if(orderNo.equals(order_no)){
+                            payService.updatePurseOrder("1", "提交上游成功", "0", orderNo);
+                            resultMap.put("success", true);
+                            resultMap.put("msg", "提现成功");
+                            outJson(JSONObject.toJSONString(resultMap), response);
+                            return;
+                        }
+                    }else{
+                        String resultMsg = headMap.get("result_msg");
+                        payService.updatePurseOrder("2", resultMsg, null, orderNo);
+                        payService.returnExtraction(orderNo,"提现提交上游失败");
+                        resultMap.put("success", false);
+                        resultMap.put("msg", resultMsg);
+                        outJson(JSONObject.toJSONString(resultMap), response);
+                        return;
+                    }
+                }else{
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "非允许业务类型,订单编号:"+orderNo);
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+            }else{
+                resultMap.put("success",false);
+                resultMap.put("msg", msg);
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            resultMap.put("success",false);
+            resultMap.put("msg", "系统异常");
+            outJson(JSONObject.toJSONString(resultMap), response);
+            return;
+        } finally {
+            log.info("purseCashCreateOrder代付下单结果:" + JSONObject.toJSONString(resultMap));
+        }
+    }
+
     @RequestMapping(value="callbackWow")
-    public void callbackWow(@RequestParam Map<String,String> params,HttpServletResponse response){
+    public void callbackWow(@RequestParam Map<String,String> params, HttpServletResponse response) {
         log.info("---------callbackWow---------params=" + params);
         try {
             String dataStr = new DESPlus(WoFuConfig.SECRET_KEY).decrypt(params.get("data"));
@@ -351,31 +454,75 @@ public class PayAction extends BaseController {
                 String resultMsg = String.valueOf(headMap.get("result_msg"));
                 Map<String,Object> contentMap = LZJUtil.jsonToMap(contentStr);
                 String orderNo = String.valueOf(contentMap.get("order_no"));
-                Map<String,Object> orderMap = payService.selectPayOrder(orderNo);
-                if(orderMap==null || orderMap.isEmpty()){
-                    log.info("无此订单,orderNo="+orderNo);
-                    payService.insertOperationLog("WoFu", "callback", null, "无此订单,orderNo="+orderNo);
-                    return;
-                }
-                if("3".equals(String.valueOf(orderMap.get("order_status"))) || !"0".equals(String.valueOf(orderMap.get("trans_status")))){
-                    log.info("该订单上游已回调，或不是交易中状态,orderNo="+orderNo);
-                    payService.insertOperationLog("WoFu", "callback", null, "该订单上游已回调，或不是交易中状态,orderNo="+orderNo);
-                    return;
-                }
-                log.info("更新订单信息,orderNo="+orderNo);
-                if("SUCCESS".equals(resultCode)){
-                    //payService.updatePayOrder("3","订单支付成功","1",orderNo);
-                    payService.recharge(orderNo);
-                }else if("FAIL".equals(resultCode)){
-                    payService.updatePayOrder("3",resultMsg,"2",orderNo);
-                }else{
-                    payService.updatePayOrder("3",resultMsg,"3",orderNo);
+                if("wxNative".equals(bizName) || "alipay".equals(bizName)){
+                    log.info("支付回调,orderNo="+orderNo);
+                    Map<String,Object> orderMap = payService.selectPayOrder(orderNo);
+                    if(orderMap==null || orderMap.isEmpty()){
+                        log.info("无此订单,orderNo="+orderNo);
+                        payService.insertOperationLog("WoFu", "callback", null, "无此订单,orderNo="+orderNo);
+                        return;
+                    }
+                    if("3".equals(String.valueOf(orderMap.get("order_status"))) || !"0".equals(String.valueOf(orderMap.get("trans_status")))){
+                        log.info("该订单上游已回调，或不是交易中状态,orderNo="+orderNo);
+                        payService.insertOperationLog("WoFu", "callback", null, "该订单上游已回调，或不是交易中状态,orderNo="+orderNo);
+                        return;
+                    }
+                    log.info("更新订单信息,orderNo="+orderNo);
+                    if("SUCCESS".equals(resultCode)){
+                        payService.recharge(orderNo);
+                        //发送模板消息
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String appId = payService.getParamValue("AppID");
+                        String weixinUrl = payService.getParamValue("weixinUrl");
+                        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do");
+                        String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
+                        String transAmount = String.valueOf(orderMap.get("trans_amount"));
+                        String userNo = String.valueOf(orderMap.get("user_no"));
+                        Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
+                        String openid = String.valueOf(userMap.get("openid"));
+                        String merchantName = String.valueOf(userMap.get("merchant_name"));
+                        Map<String,String> paramsMap = new HashMap<>();
+                        paramsMap.put("first","恭喜您有一笔收款到账");
+                        paramsMap.put("keyword1",merchantName);
+                        paramsMap.put("keyword2",transAmount);
+                        paramsMap.put("keyword3",sdf.format(new Date()));
+                        paramsMap.put("remark","点击“个人中心”--“余额”可进行提现");
+                        paramsMap.put("descUrl",userInfoUrl);
+                        wxAction.sendWXModelMsg(openid,"Oce0qp_QYtfpVy0o4kr-ZboGmtd1gmgdlR46Pyzqoac",paramsMap);
+                    }else if("FAIL".equals(resultCode)){
+                        payService.updatePayOrder("3",resultMsg,"2",orderNo);
+                    }else{
+                        payService.updatePayOrder("3",resultMsg,"3",orderNo);
+                    }
+                }else if("transfer".equals(bizName)){
+                    log.info("提现回调,orderNo="+orderNo);
+                    Map<String,Object> orderMap = payService.selectPurseOrder(orderNo);
+                    if(orderMap==null || orderMap.isEmpty()){
+                        log.info("无此订单,orderNo="+orderNo);
+                        payService.insertOperationLog("WoFu", "callback", null, "无此订单,orderNo="+orderNo);
+                        return;
+                    }
+                    if("3".equals(String.valueOf(orderMap.get("order_status"))) || !"0".equals(String.valueOf(orderMap.get("cash_status")))){
+                        log.info("该订单上游已回调，或不是提现中状态,orderNo="+orderNo);
+                        payService.insertOperationLog("WoFu", "callback", null, "该订单上游已回调，或不是提现中状态,orderNo="+orderNo);
+                        return;
+                    }
+                    log.info("更新订单信息,orderNo="+orderNo);
+                    if("SUCCESS".equals(resultCode)){
+                        payService.updatePurseOrder("3", "提现成功", "1",new Date(), orderNo);
+                    }else if("FAIL".equals(resultCode)){
+                        payService.updatePurseOrder("3", resultMsg, "2", orderNo);
+                        payService.returnExtraction(orderNo,"提现回调，提现失败");
+                    }else{
+                        payService.updatePurseOrder("3", resultMsg, "3", orderNo);
+                    }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }finally {
-            outText("204", response);
+            //outText("204", response);
+            response.setStatus(204);
         }
 
     }
