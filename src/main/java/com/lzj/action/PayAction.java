@@ -212,6 +212,13 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
+            String parentParentNo = String.valueOf(parentMap.get("parent_no"));
+            if(userNo.equals(parentParentNo)){
+                resultMap.put("success",false);
+                resultMap.put("msg", "下级不能成为上级");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
             Map<String,Object> updateWhereMap = new HashMap<>();
             updateWhereMap.put("user_no",userNo);
             Map<String,Object> updateMap = new HashMap<>();
