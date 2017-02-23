@@ -211,7 +211,7 @@ public class PayService {
                 return profitResultMap;
             }
             String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
-            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql,new Object[]{parentNo,"IN",parentProfitAmount,new Date(),5,payOrderMap.get("id")},conn);
+            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql, new Object[]{parentNo, "IN", parentProfitAmount, new Date(), 5, payOrderMap.get("id")}, conn);
             String addBalanceSql = "update user set balance=balance+? where user_no=?";
             int updateResultRow = dao.updateByTranscation(addBalanceSql,new Object[]{parentProfitAmount,parentNo},conn);
             log.info("orderNo:{},parentProfit,sql结果，insertResultRow:{},updateResultRow:{}",new Object[]{orderNo,insertResultRow,updateResultRow});
@@ -326,5 +326,11 @@ public class PayService {
         }else{
             return null;
         }
+    }
+
+    //商户编号、日期区间查询交易订单总金额
+    public Object findOrderByUserNo(String userNo,String startDate,String endDate) {
+        String sql = "select sum(o.trans_amount) totalAmount from pay_order o where o.user_no =? and o.trans_status = '1' and create_time between ? and ?";
+        return dao.findBy(sql,"totalAmount",new Object[]{userNo,startDate,endDate});
     }
 }

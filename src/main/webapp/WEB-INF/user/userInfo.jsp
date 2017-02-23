@@ -197,39 +197,44 @@
 
         function extraction(){
             var balance = "${userMap.balance}";
+            var extraction_fee = "${userMap.extraction_fee}";
             if(balance<=0){
                 $.alert("无需提现");
             }else{
-                $.confirm("提现金额：${userMap.balance}<br/>手续费：${userMap.extraction_fee}元/次<br/>到账金额：${userMap.balance-userMap.extraction_fee}","确认提现", function() {
-                    $.showLoading("提现中...");
-                    var i = Math.random() * 4;
-                    var abc = parseInt(i);
-                    $.getJSON("${ctx}/pay/purseCashCreateOrder", {
-                        userNo: '${userMap.encryptUserNo}'
-                    }, function (data) {
-                        $.hideLoading();
-                        if(!jQuery.isEmptyObject(data)){
-                            var params = eval(data);
-                            var success = params.success;
-                            var msg = params.msg;
-                            if(success){
-                                $.alert("提现成功",function(){
-                                    WeixinJSBridge.call('closeWindow');
-                                });
+                if(balance<=extraction_fee){
+                    $.alert("提现手续费为"+extraction_fee+"元/次，余额不足");
+                }else{
+                    $.confirm("提现金额：${userMap.balance}<br/>手续费：${userMap.extraction_fee}元/次<br/>到账金额：${userMap.balance-userMap.extraction_fee}","确认提现", function() {
+                        $.showLoading("提现中...");
+                        var i = Math.random() * 4;
+                        var abc = parseInt(i);
+                        $.getJSON("${ctx}/pay/purseCashCreateOrder", {
+                            userNo: '${userMap.encryptUserNo}'
+                        }, function (data) {
+                            $.hideLoading();
+                            if(!jQuery.isEmptyObject(data)){
+                                var params = eval(data);
+                                var success = params.success;
+                                var msg = params.msg;
+                                if(success){
+                                    $.alert("提现成功",function(){
+                                        WeixinJSBridge.call('closeWindow');
+                                    });
+                                }else{
+                                    $.alert(msg,function(){
+                                        WeixinJSBridge.call('closeWindow');
+                                    });
+                                }
                             }else{
-                                $.alert(msg,function(){
+                                $.alert("提现异常，请稍后重试",function(){
                                     WeixinJSBridge.call('closeWindow');
                                 });
                             }
-                        }else{
-                            $.alert("提现异常，请稍后重试",function(){
-                                WeixinJSBridge.call('closeWindow');
-                            });
-                        }
-                    })
-                }, function() {
-                    //点击取消后的回调函数
-                });
+                        })
+                    }, function() {
+                        //点击取消后的回调函数
+                    });
+                }
             }
         }
 

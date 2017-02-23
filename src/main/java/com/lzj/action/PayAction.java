@@ -9,6 +9,7 @@ import com.lzj.service.PayService;
 import com.lzj.utils.DESPlus;
 import com.lzj.utils.LZJUtil;
 import com.lzj.utils.SignUtil;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +91,7 @@ public class PayAction extends BaseController {
             updateMap.put("id_card_no",idcard);
             updateMap.put("bank_no",bankcard);
             updateMap.put("wx_trans_fee_rate","0.0049");
-            updateMap.put("extraction_fee","1");
+            updateMap.put("extraction_fee","0");
             updateMap.put("real_name",realname);
             int resultRow = apiService.updateMethod("user", updateMap, updateWhereMap);
             if(resultRow==1){
@@ -599,6 +600,16 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
+            Map<String,Object> compAmountResultMap = compAmountLimit("trade",userNo,new BigDecimal(amount));
+            Boolean compAmountResultStatus = (Boolean)compAmountResultMap.get("resultStatus");
+            String compAmountResultMsg = String.valueOf(compAmountResultMap.get("resultMsg"));
+            if(!compAmountResultStatus){
+                log.info("限额校验不通过");
+                resultMap.put("success", false);
+                resultMap.put("msg", compAmountResultMsg);
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
             String orderNo = String.valueOf(System.nanoTime());
             String body = String.valueOf(userMap.get("nickname"));
 
@@ -708,6 +719,12 @@ public class PayAction extends BaseController {
                 return;
             }
             BigDecimal extractionFee = new BigDecimal(String.valueOf(userMap.get("extraction_fee")));
+            if(balance.compareTo(extractionFee)!=1){
+                resultMap.put("success",false);
+                resultMap.put("msg", "提现手续费为"+String.valueOf(extractionFee)+"元/次，余额不足");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
             BigDecimal extractionAmount = balance.subtract(extractionFee);
             String orderNo = String.valueOf(System.nanoTime());
             String accountName = String.valueOf(userMap.get("real_name"));
@@ -991,7 +1008,7 @@ public class PayAction extends BaseController {
             resultMsg = "实名认证失败";
         }
         resultMap.put("resultBoolean",resultBoolean);
-        resultMap.put("resultMsg",resultMsg);
+        resultMap.put("resultMsg", resultMsg);
         return resultMap;
     }
 
@@ -1000,6 +1017,67 @@ public class PayAction extends BaseController {
         Pattern pattern=Pattern.compile("^(([1-9]{1}\\d*)|([0]{1}))(\\.(\\d){0,2})?$"); // 判断小数点后2位的数字的正则表达式
         Matcher match=pattern.matcher(str);
         return match.matches();
+    }
+
+    /**
+     * 金额与限额比较
+     * @param tradeType 限额类型 trade交易  extra提现
+     * @param userNo 商户号
+     * @param amount 金额
+     * @return 比较结果  true表示在限额范围之内，false表示不在限额范围之内
+     */
+    public Map<String,Object> compAmountLimit(String tradeType,String userNo,BigDecimal amount){
+        Map<String,Object> resultMap = new HashMap();
+        resultMap.put("resultStatus",false);
+        resultMap.put("resultMsg","额度超限");
+        try{
+            log.info("比较限额,{},{},{}",new Object[]{userNo,amount,tradeType});
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            String today = sdf.format(new Date());
+            String todayStart = today+" 00:00:00";
+            String todayEnd = today+" 23:59:59";
+            SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM");
+            String nowMonth = sdf2.format(new Date());
+            String monthStart = "${nowMonth}-01 00:00:00";
+            String monthEnd = "${nowMonth}-31 23:59:59";
+
+            if("trade".equals(tradeType)){
+                Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
+                String ONE_FEE = String.valueOf(userMap.get("single_trade_max_amount")); //单笔交易限额  空为不限制
+                String DAY_FEE = String.valueOf(userMap.get("day_trade_max_amount")); //单日交易限额  空为不限制
+
+                if(isNotEmpty(ONE_FEE) && new BigDecimal(ONE_FEE).compareTo(amount)==-1){
+                    log.info("大于单笔交易限额:" + ONE_FEE);
+                    resultMap.put("resultStatus",false);
+                    resultMap.put("resultMsg", "大于单笔交易限额:"+ONE_FEE);
+                    return resultMap;
+                }
+                String HAVE_DAY_TRADE_AMOUNT = String.valueOf(payService.findOrderByUserNo(userNo, todayStart, todayEnd)); //单日已成功交易金额
+                log.info("单日已成功交易金额:"+HAVE_DAY_TRADE_AMOUNT);
+                if(isEmpty(HAVE_DAY_TRADE_AMOUNT)){
+                    HAVE_DAY_TRADE_AMOUNT = "0.00";
+                }
+                if(isNotEmpty(DAY_FEE) && new BigDecimal(DAY_FEE).compareTo(amount.add(new BigDecimal(HAVE_DAY_TRADE_AMOUNT)))==-1){
+                    log.info("大于单日交易限额:"+DAY_FEE+","+HAVE_DAY_TRADE_AMOUNT);
+                    resultMap.put("resultStatus",false);
+                    resultMap.put("resultMsg", "大于单日交易限额:" + DAY_FEE);
+                    return resultMap;
+                }
+                log.info("交易限额校验通过");
+                resultMap.put("resultStatus",true);
+                resultMap.put("resultMsg", "");
+                return resultMap;
+            }else{
+                return resultMap;
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+            log.info(e.getMessage());
+            resultMap.put("resultStatus",false);
+            resultMap.put("resultMsg", "系统异常");
+            return resultMap;
+        }
+
     }
 
 }
