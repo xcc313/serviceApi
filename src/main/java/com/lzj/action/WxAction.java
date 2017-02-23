@@ -11,6 +11,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.alibaba.fastjson.JSONObject;
 import com.lzj.op.ResultMsg;
 import com.lzj.op.WeiXinPayOrder;
 import com.lzj.service.UserService;
@@ -46,6 +47,9 @@ public class WxAction extends BaseController{
 	public WxAction(){}
 	public WxAction(WeiXinService weixinService){ this.weixinService = weixinService;}
 	public WxAction(ApiService apiService,WeiXinService weixinService){ this.apiService = apiService;this.weixinService = weixinService;}
+
+	public static long TICKET_CREATE_TIME = 0;
+	public static String JSAPI_TICKET = "";
 
 	@RequestMapping(value="/wxReceive",method = RequestMethod.GET)
 	public void wxReceiveGet(HttpServletRequest request ,HttpServletResponse response) {
@@ -254,6 +258,25 @@ public class WxAction extends BaseController{
 		}
 		System.out.println("getAccessToken()方法锁里面的accessToken.getLastTime()--->" + accessToken.getLastTime() + "   accessToken.getAccessToken()-->" + accessToken.getAccessToken());
 		return accessToken.getAccessToken();
+	}
+
+	public String getJsapiTicket(){
+		long diffTime = System.currentTimeMillis() - TICKET_CREATE_TIME;
+		//1分钟 5000秒
+		if (isEmpty(JSAPI_TICKET) || diffTime / 1000 > 5000) {
+			log.info("获取微信ticket");
+			String token = getAccessToken();
+			String ticketUrl = "https://api.weixin.qq.com/cgi-bin/ticket/getticket";
+			String url = ticketUrl+"?access_token="+token+"&type=jsapi";
+			String result = LZJUtil.sendGet(url, "UTF-8");
+			if (isNotEmpty(result)) {
+				JSONObject resultJson = JSONObject.parseObject(result);
+				JSAPI_TICKET = String.valueOf(resultJson.get("ticket"));
+				TICKET_CREATE_TIME = System.currentTimeMillis();
+			}
+		}
+		log.info("返回JSAPI_TICKET:"+JSAPI_TICKET);
+		return JSAPI_TICKET;
 	}
 	
 	/**

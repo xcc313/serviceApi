@@ -1,8 +1,11 @@
 package com.lzj.utils;
 
+import com.alibaba.druid.util.StringUtils;
+import org.apache.commons.codec.digest.DigestUtils;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.util.*;
 
 /**
  * 请求校验工具类
@@ -50,6 +53,23 @@ public class SignUtil {
 				return false;
 			}
 		}
+
+	public static String jsSign(Map<String,String> map) throws Exception{
+		String sha1HexStr = "";
+		List sortedKeys = new ArrayList(map.keySet());
+		Collections.sort(sortedKeys);
+		for(Object obj:sortedKeys){
+			String keyStr = String.valueOf(obj);
+			if (!"sign".equals(keyStr)) {
+				if (!StringUtils.isEmpty(map.get(keyStr))) {
+					sha1HexStr += keyStr + "=" + map.get(keyStr) + "&";
+				}
+			}
+		}
+		sha1HexStr = sha1HexStr.substring(0,sha1HexStr.length()-1);
+		System.out.println("sha1HexStr="+sha1HexStr);
+		return DigestUtils.sha1Hex(sha1HexStr);
+	}
 
 		/**
 		 * 将字节数组转换为十六进制字符串

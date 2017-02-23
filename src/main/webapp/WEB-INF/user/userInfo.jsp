@@ -187,6 +187,10 @@
             window.location.href='${ctx}/pay/balanceBill?userNo=${userMap.encryptUserNo}';
         }
 
+        function toMerchantEdit(){
+            window.location.href='${ctx}/pay/toMerchantEdit?userNo=${userMap.encryptUserNo}';
+        }
+
         function extraction(){
             var balance = "${userMap.balance}";
             if(balance<=0){
@@ -250,7 +254,7 @@
             </p>
         </a>
         <c:choose>
-            <c:when test="${userMap.user_no eq '802576682' || userMap.user_no eq '100000001'}">
+            <c:when test="${userMap.user_no eq '802576682' || userMap.user_no eq '100000001' || userMap.user_no eq '808009159'}">
                 <a href="javascript:extraction();" class="weui_grid js_grid" data-id="cell">
                     <div class="weui_grid_icon">
                         <img src="${ctx}/images/balance.png" alt="余额">
@@ -275,7 +279,7 @@
                         余额账单
                     </p>
                 </a>
-                <a href="javascript:toBankEdit()" class="weui_grid js_grid" data-id="cell">
+                <a href="javascript:toMerchantEdit()" class="weui_grid js_grid" data-id="cell">
                     <div class="weui_grid_icon">
                         <img src="${ctx}/images/bankEdit.png" alt="结算卡修改">
                     </div>
