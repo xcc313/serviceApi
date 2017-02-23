@@ -191,6 +191,58 @@ public class PayService {
         return extractionResultMap;
     }
 
+    public Map<String,Object> parentProfit(String parentNo,String orderNo,BigDecimal parentProfitAmount){
+        Map<String,Object> profitResultMap = new HashMap<>();
+        Connection conn = dao.getConnection();
+        try {
+            conn.setAutoCommit(false);
+            String searchOrderSql = "select * from pay_order where order_no=? for update";
+            Map<String,Object> payOrderMap = dao.findFirst(searchOrderSql,orderNo);
+            if(payOrderMap==null || payOrderMap.isEmpty()){
+                log.info("无此订单,orderNo="+orderNo);
+                profitResultMap.put("success",false);
+                profitResultMap.put("msg", "无此订单");
+                return profitResultMap;
+            }
+            if(!"1".equals(String.valueOf(payOrderMap.get("trans_status")))){
+                log.info("订单非成功状态,orderNo="+orderNo);
+                profitResultMap.put("success", false);
+                profitResultMap.put("msg", "订单非成功状态");
+                return profitResultMap;
+            }
+            String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
+            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql,new Object[]{parentNo,"IN",parentProfitAmount,new Date(),5,payOrderMap.get("id")},conn);
+            String addBalanceSql = "update user set balance=balance+? where user_no=?";
+            int updateResultRow = dao.updateByTranscation(addBalanceSql,new Object[]{parentProfitAmount,parentNo},conn);
+            log.info("orderNo:{},parentProfit,sql结果，insertResultRow:{},updateResultRow:{}",new Object[]{orderNo,insertResultRow,updateResultRow});
+            if(insertResultRow==1 && updateResultRow==1){
+                log.info("分润sql提交,orderNo="+orderNo);
+                conn.commit();
+                profitResultMap.put("success", true);
+                profitResultMap.put("msg", "分润成功");
+                return profitResultMap;
+            }else{
+                log.info("分润sql回滚,orderNo="+orderNo);
+                conn.rollback();
+                profitResultMap.put("success", false);
+                profitResultMap.put("msg", "分润失败");
+                return profitResultMap;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                log.info("提现sql回滚,orderNo="+orderNo);
+                conn.rollback();
+                profitResultMap.put("success", false);
+                profitResultMap.put("msg", "分润异常");
+                return profitResultMap;
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+        }
+        return profitResultMap;
+    }
+
 
     public Map<String,Object> returnExtraction(String orderNo,String backRemark){
         Map<String,Object> extractionResultMap = new HashMap<>();
@@ -268,6 +320,9 @@ public class PayService {
             return dao.findFirst(sql,channelId);
         }else if("4".equals(channel)){
             return null;
+        }else if("5".equals(channel)){
+            String sql = "select order_no,'分润成功' as trans_status from pay_order where id=?";
+            return dao.findFirst(sql,channelId);
         }else{
             return null;
         }

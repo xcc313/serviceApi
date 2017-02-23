@@ -191,12 +191,16 @@
             window.location.href='${ctx}/pay/toMerchantEdit?userNo=${userMap.encryptUserNo}';
         }
 
+        function toChildUser(){
+            window.location.href='${ctx}/pay/childUser?userNo=${userMap.encryptUserNo}';
+        }
+
         function extraction(){
             var balance = "${userMap.balance}";
             if(balance<=0){
                 $.alert("无需提现");
             }else{
-                $.confirm("提现金额：${userMap.balance}<br/>手续费：${userMap.extraction_fee}<br/>到账金额：${userMap.balance-userMap.extraction_fee}","确认提现", function() {
+                $.confirm("提现金额：${userMap.balance}<br/>手续费：${userMap.extraction_fee}元/次<br/>到账金额：${userMap.balance-userMap.extraction_fee}","确认提现", function() {
                     $.showLoading("提现中...");
                     var i = Math.random() * 4;
                     var abc = parseInt(i);
@@ -253,51 +257,47 @@
                 微币:${userMap.wei_coin }
             </p>
         </a>
-        <c:choose>
-            <c:when test="${userMap.user_no eq '802576682' || userMap.user_no eq '100000001' || userMap.user_no eq '808009159'}">
-                <a href="javascript:extraction();" class="weui_grid js_grid" data-id="cell">
-                    <div class="weui_grid_icon">
-                        <img src="${ctx}/images/balance.png" alt="余额">
-                    </div>
-                    <p class="weui_grid_label">
-                        余额:${userMap.balance}
-                    </p>
-                </a>
-                <a href="javascript:toMyPayCode()" class="weui_grid js_grid" data-id="cell">
-                    <div class="weui_grid_icon">
-                        <img src="${ctx}/images/payCode.png" alt="我的收款码">
-                    </div>
-                    <p class="weui_grid_label">
-                        我的收款码
-                    </p>
-                </a>
-                <a href="javascript:toBill()" class="weui_grid js_grid" data-id="cell">
-                    <div class="weui_grid_icon">
-                        <img src="${ctx}/images/bill.png" alt="余额账单">
-                    </div>
-                    <p class="weui_grid_label">
-                        余额账单
-                    </p>
-                </a>
-                <a href="javascript:toMerchantEdit()" class="weui_grid js_grid" data-id="cell">
-                    <div class="weui_grid_icon">
-                        <img src="${ctx}/images/bankEdit.png" alt="结算卡修改">
-                    </div>
-                    <p class="weui_grid_label">
-                        结算卡修改
-                    </p>
-                </a>
-                <a href="javascript:toMyAgent()" class="weui_grid js_grid" data-id="cell">
-                    <div class="weui_grid_icon">
-                        <img src="${ctx}/images/myAgent.png" alt="我的下级">
-                    </div>
-                    <p class="weui_grid_label">
-                        我的下级
-                    </p>
-                </a>
-            </c:when>
-            <c:otherwise>
-                <a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell" id="showDialog1">
+        <a href="javascript:extraction();" class="weui_grid js_grid" data-id="cell">
+            <div class="weui_grid_icon">
+                <img src="${ctx}/images/balance.png" alt="余额">
+            </div>
+            <p class="weui_grid_label">
+                余额:${userMap.balance}
+            </p>
+        </a>
+        <a href="javascript:toMyPayCode()" class="weui_grid js_grid" data-id="cell">
+            <div class="weui_grid_icon">
+                <img src="${ctx}/images/payCode.png" alt="我的收款码">
+            </div>
+            <p class="weui_grid_label">
+                我的收款码
+            </p>
+        </a>
+        <a href="javascript:toBill()" class="weui_grid js_grid" data-id="cell">
+            <div class="weui_grid_icon">
+                <img src="${ctx}/images/bill.png" alt="余额账单">
+            </div>
+            <p class="weui_grid_label">
+                余额账单
+            </p>
+        </a>
+        <a href="javascript:toMerchantEdit()" class="weui_grid js_grid" data-id="cell">
+            <div class="weui_grid_icon">
+                <img src="${ctx}/images/bankEdit.png" alt="结算卡修改">
+            </div>
+            <p class="weui_grid_label">
+                结算卡修改
+            </p>
+        </a>
+        <a href="javascript:toChildUser()" class="weui_grid js_grid" data-id="cell">
+            <div class="weui_grid_icon">
+                <img src="${ctx}/images/myAgent.png" alt="我的下级">
+            </div>
+            <p class="weui_grid_label">
+                我的下级
+            </p>
+        </a>
+                <%--<a href="javascript:void(0);" class="weui_grid js_grid" data-id="cell" id="showDialog1">
                     <div class="weui_grid_icon">
                         <img src="${ctx}/images/refresh-1.png" alt="刷新个人信息">
                     </div>
@@ -312,10 +312,7 @@
                     <p class="weui_grid_label">
                         我的收款码
                     </p>
-                </a>
-
-            </c:otherwise>
-        </c:choose>
+                </a>--%>
 
     </div>
 

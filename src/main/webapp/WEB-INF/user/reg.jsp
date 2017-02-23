@@ -119,7 +119,7 @@
         <div id="merchantNameDiv" class="weui_cell">
             <div class="weui_cell_hd"><label class="weui_label">商户名称</label></div>
             <div class="weui_cell_bd weui_cell_primary">
-                <input id="merchantName" name="merchantName" class="weui_input" type="text" placeholder="商户中文名称">
+                <input id="merchantName" name="merchantName" class="weui_input" type="text" placeholder="商户中文名称" maxlength="10">
             </div>
         </div>
         <div id="bankcardDiv" class="weui_cell">

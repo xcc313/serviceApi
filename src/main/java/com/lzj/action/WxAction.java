@@ -275,7 +275,7 @@ public class WxAction extends BaseController{
 				TICKET_CREATE_TIME = System.currentTimeMillis();
 			}
 		}
-		log.info("返回JSAPI_TICKET:"+JSAPI_TICKET);
+		log.info("返回JSAPI_TICKET:" + JSAPI_TICKET);
 		return JSAPI_TICKET;
 	}
 	
@@ -741,7 +741,11 @@ public class WxAction extends BaseController{
 			String keyword3 = paramsMap.get("keyword3");
 			String remark = paramsMap.get("remark");
 			String descUrl = paramsMap.get("descUrl");
-			String msgString="{ \"touser\":\""+toUserOpenId+"\", \"template_id\":\""+templateId+"\",\"url\":\""+descUrl+"\",  \"data\":{ \"first\": { \"value\":\""+first+"\", \"color\":\"#173177\" }, \"keyword1\":{ \"value\":\""+keyword1+"\", \"color\":\"#173177\" }, \"keyword2\":{ \"value\":\""+keyword2+"\", \"color\":\"#173177\" }, \"keyword3\":{ \"value\":\""+keyword3+"\", \"color\":\"#173177\" }, \"remark\":{ \"value\":\""+remark+"\", \"color\":\"#173177\" } } }";
+			String keyword3Str = "";
+			if(isNotEmpty(keyword3)){
+				keyword3Str = ", \"keyword3\":{ \"value\":\""+keyword3+"\", \"color\":\"#173177\" }";
+			}
+			String msgString="{ \"touser\":\""+toUserOpenId+"\", \"template_id\":\""+templateId+"\",\"url\":\""+descUrl+"\",  \"data\":{ \"first\": { \"value\":\""+first+"\", \"color\":\"#173177\" }, \"keyword1\":{ \"value\":\""+keyword1+"\", \"color\":\"#173177\" }, \"keyword2\":{ \"value\":\""+keyword2+"\", \"color\":\"#173177\" } "+keyword3Str+", \"remark\":{ \"value\":\""+remark+"\", \"color\":\"#173177\" } } }";
 			os=huc.getOutputStream();
 			os.write(msgString.getBytes("UTF-8"));
 			os.flush();

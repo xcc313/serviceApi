@@ -191,6 +191,12 @@ public class PayAction extends BaseController {
             String parentEncryptNo = parentUrl.substring(parentUrl.lastIndexOf("=")+1);
             String parentNo = decryptUserNo(parentEncryptNo);
             log.info("绑定上级,parentNo="+parentNo);
+            if(userNo.equals(parentNo)){
+                resultMap.put("success",false);
+                resultMap.put("msg", "上级用户不能是自己");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
             Map<String,Object> parentMap = payService.selectUserByUserNo(parentNo);
             if(parentMap==null || parentMap.isEmpty()){
                 resultMap.put("success",false);
@@ -245,7 +251,7 @@ public class PayAction extends BaseController {
             Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
             if(userMap==null || userMap.isEmpty()){
                 model.put("errorMsg","无此用户");
-                model.put("errorCode","toMyPayCode"+encryptUserNo);
+                model.put("errorCode","balanceBill"+encryptUserNo);
                 return "errorPage";
             }
             List<Map<String,Object>> balanceHistoryList = apiService.getListMethod("balance_history", whereMap, "id", "desc", 10);
@@ -271,8 +277,37 @@ public class PayAction extends BaseController {
                 }
             }
             model.put("balanceHistoryList",balanceHistoryList);
-            model.put("userNo",encryptUserNo);
+            model.put("userNo", encryptUserNo);
             return "user/balanceBill";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.put("errorMsg","系统异常");
+            model.put("errorCode", "balanceBill100000000");
+            return "errorPage";
+        }
+    }
+
+    @RequestMapping(value="childUser")
+    public String childUser(final ModelMap model, @RequestParam Map<String,String> params,HttpServletResponse response){
+        log.info("-------------childUser到我的下级页面----------params="+params);
+        String encryptUserNo = params.get("userNo");
+        try {
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                model.put("errorMsg","无此用户");
+                model.put("errorCode","childUser"+encryptUserNo);
+                return "errorPage";
+            }
+            Map<String,Object> findChildWhereMap = new HashMap<String, Object>();
+            findChildWhereMap.put("parent_no",userNo);
+            List<Map<String,Object>> childUserList = apiService.getListMethod("user", findChildWhereMap, "id", "desc", 0);
+            model.put("childUserList", childUserList);
+            model.put("userNo", encryptUserNo);
+            return "user/childUser";
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -333,7 +368,7 @@ public class PayAction extends BaseController {
     }
 
     @RequestMapping(value="toMerchantEdit")
-    public String merchantEdit(final ModelMap model, @RequestParam Map<String,String> params,HttpServletResponse response){
+    public String toMerchantEdit(final ModelMap model, @RequestParam Map<String,String> params,HttpServletResponse response){
         log.info("-------------toMerchantEdit到商户信息修改页面----------params="+params);
         String encryptUserNo = params.get("userNo");
         try {
@@ -343,7 +378,7 @@ public class PayAction extends BaseController {
             Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
             if(userMap==null || userMap.isEmpty()){
                 model.put("errorMsg","无此用户");
-                model.put("errorCode","toMyPayCode"+encryptUserNo);
+                model.put("errorCode","toMerchantEdit"+encryptUserNo);
                 return "errorPage";
             }
             String idCard = String.valueOf(userMap.get("id_card_no"));
@@ -766,7 +801,7 @@ public class PayAction extends BaseController {
                     log.info("更新订单信息,orderNo="+orderNo);
                     if("SUCCESS".equals(resultCode)){
                         payService.recharge(orderNo);
-                        //发送模板消息
+                        //发送收款成功模板消息
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         String appId = payService.getParamValue("AppID");
                         String weixinUrl = payService.getParamValue("weixinUrl");
@@ -785,6 +820,28 @@ public class PayAction extends BaseController {
                         paramsMap.put("remark","点击“个人中心”--“余额”可进行提现");
                         paramsMap.put("descUrl",userInfoUrl);
                         wxAction.sendWXModelMsg(openid,"Oce0qp_QYtfpVy0o4kr-ZboGmtd1gmgdlR46Pyzqoac",paramsMap);
+                        //上级分润
+                        String parentNo = String.valueOf(userMap.get("parent_no"));
+                        if(isNotEmpty(parentNo)){
+                            Map<String,Object> parentMap = payService.selectUserByUserNo(parentNo);
+                            BigDecimal parentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.001")).setScale(2,BigDecimal.ROUND_DOWN);
+                            log.info("orderNo="+orderNo+",给上级"+parentNo+"分润"+String.valueOf(parentProfitAmount));
+                            if(parentProfitAmount.compareTo(new BigDecimal("0.00"))==1){
+                                Map<String,Object> profitResultMap = payService.parentProfit(parentNo, orderNo, parentProfitAmount);
+                                payService.insertOperationLog(parentNo,"profit","user","订单orderNo="+orderNo+"分润结果："+profitResultMap);
+                                log.info("分润结果extractionResultMap=" + profitResultMap);
+                                Boolean resultBoo = (Boolean) profitResultMap.get("success");
+                                if(resultBoo){
+                                    Map<String,String> profitParamsMap = new HashMap<>();
+                                    profitParamsMap.put("first","尊敬的用户：您有一笔分润资金已成功入账。");
+                                    profitParamsMap.put("keyword1",String.valueOf(parentProfitAmount));
+                                    profitParamsMap.put("keyword2",sdf.format(new Date()));
+                                    profitParamsMap.put("remark","可通过“个人中心”--“余额账单”进行查看");
+                                    profitParamsMap.put("descUrl",userInfoUrl);
+                                    wxAction.sendWXModelMsg(String.valueOf(parentMap.get("openid")),"VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk",profitParamsMap);
+                                }
+                            }
+                        }
                     }else if("FAIL".equals(resultCode)){
                         payService.updatePayOrder("3",resultMsg,"2",orderNo);
                     }else{
