@@ -188,7 +188,12 @@
         }
 
         function toMerchantEdit(){
-            window.location.href='${ctx}/pay/toMerchantEdit?userNo=${userMap.encryptUserNo}';
+            var bank_no = "${userMap.bank_no}";
+            if(isNullOrEmpty(bank_no)){
+                $.toast("请先点击我的收款码进行注册", "forbidden");
+            }else{
+                window.location.href='${ctx}/pay/toMerchantEdit?userNo=${userMap.encryptUserNo}';
+            }
         }
 
         function toChildUser(){

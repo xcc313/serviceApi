@@ -333,4 +333,14 @@ public class PayService {
         String sql = "select sum(o.trans_amount) totalAmount from pay_order o where o.user_no =? and o.trans_status = '1' and create_time between ? and ?";
         return dao.findBy(sql,"totalAmount",new Object[]{userNo,startDate,endDate});
     }
+
+    public Map<String,Object> cardBin(String accountNo) throws SQLException {
+        String sql = "select * from pos_card_bin c  where  c.card_length = length(?) AND c.verify_code = left(?,  c.verify_length)";
+        return dao.findFirst(sql, new Object[]{accountNo, accountNo});
+    }
+
+    public List<Map<String,Object>> selectSendMerchantName(){
+        String sql = "select * from send_merchant_name";
+        return dao.find(sql);
+    }
 }

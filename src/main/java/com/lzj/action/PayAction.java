@@ -74,6 +74,19 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
+            /*Map<String,Object> cardBinMap = payService.cardBin(bankcard);
+            if(cardBinMap==null || cardBinMap.isEmpty() || isEmpty(String.valueOf(cardBinMap.get("bank_no")))){
+                resultMap.put("success",false);
+                resultMap.put("msg", "银行卡无法识别，请换卡");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            if("贷记卡".equals(String.valueOf(cardBinMap.get("card_type"))) || "准贷记卡".equals(String.valueOf(cardBinMap.get("card_type")))){
+                resultMap.put("success",false);
+                resultMap.put("msg", "不支持信用卡提现，请换借记卡");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }*/
             Map<String,Object> checkVerified = checkFourVerified(bankcard,idcard,realname,mobileNo);
             Boolean verifiedResult = (Boolean)checkVerified.get("resultBoolean");
             String verifiedMsg = String.valueOf(checkVerified.get("resultMsg"));
@@ -392,6 +405,11 @@ public class PayAction extends BaseController {
             String idCard = String.valueOf(userMap.get("id_card_no"));
             String accountNo = String.valueOf(userMap.get("bank_no"));
             String mobileNo = String.valueOf(userMap.get("mobile_no"));
+            if(isEmpty(idCard) || isEmpty(accountNo) || isEmpty(mobileNo)){
+                model.put("errorMsg","请先点击我的收款码进行注册");
+                model.put("errorCode",encryptUserNo);
+                return "errorPage";
+            }
             String wx_trans_fee_rate = String.valueOf(userMap.get("wx_trans_fee_rate"));
             idCard = idCard.substring(0,6)+"******"+idCard.substring(idCard.length()-4);
             accountNo = accountNo.substring(0,6)+"******"+accountNo.substring(accountNo.length()-4);
@@ -618,7 +636,7 @@ public class PayAction extends BaseController {
                 return;
             }
             String orderNo = String.valueOf(System.nanoTime());
-            String body = String.valueOf(userMap.get("nickname"));
+            String body = String.valueOf(userMap.get("merchant_name"));
 
             Map<String,Object> orderMap = new HashMap<>();
             orderMap.put("openid",String.valueOf(userMap.get("openid")));
@@ -631,6 +649,10 @@ public class PayAction extends BaseController {
             }else if("alipay".equals(payType)){
                 //暂无支付宝交易费率设置
                 orderMap.put("acq_name","WOFU_ZFB");
+                List<Map<String,Object>> sendMerchantNameList = payService.selectSendMerchantName();
+                Random random = new Random();
+                int index =random.nextInt(sendMerchantNameList.size());
+                body = String.valueOf(sendMerchantNameList.get(index).get("send_merchant_name"));
             }
             BigDecimal fee = (new BigDecimal(amount).multiply(feeRate)).setScale(2, BigDecimal.ROUND_UP);
             orderMap.put("trans_fee_rate",feeRate);
