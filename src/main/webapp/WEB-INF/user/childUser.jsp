@@ -23,7 +23,7 @@
 <body style="font-family: 微软雅黑;">
 <div>
     <div class="weui_panel weui_panel_access">
-        <div class="weui_panel_hd">下级用户</div>
+        <div class="weui_panel_hd">下级用户(只显示下一级)</div>
         <div class="weui_panel_bd" id="historyDiv">
             <c:forEach items="${childUserList}" var="childUserMap">
             <div class="weui_media_box weui_media_text">

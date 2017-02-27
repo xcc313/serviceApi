@@ -191,7 +191,8 @@ public class PayService {
         return extractionResultMap;
     }
 
-    public Map<String,Object> parentProfit(String parentNo,String orderNo,BigDecimal parentProfitAmount){
+    //分润  channel：5为一级分润  6为二级分润
+    public Map<String,Object> parentProfit(String parentNo,String orderNo,BigDecimal parentProfitAmount,int channel){
         Map<String,Object> profitResultMap = new HashMap<>();
         Connection conn = dao.getConnection();
         try {
@@ -211,7 +212,7 @@ public class PayService {
                 return profitResultMap;
             }
             String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
-            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql, new Object[]{parentNo, "IN", parentProfitAmount, new Date(), 5, payOrderMap.get("id")}, conn);
+            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql, new Object[]{parentNo, "IN", parentProfitAmount, new Date(), channel, payOrderMap.get("id")}, conn);
             String addBalanceSql = "update user set balance=balance+? where user_no=?";
             int updateResultRow = dao.updateByTranscation(addBalanceSql,new Object[]{parentProfitAmount,parentNo},conn);
             log.info("orderNo:{},parentProfit,sql结果，insertResultRow:{},updateResultRow:{}",new Object[]{orderNo,insertResultRow,updateResultRow});
@@ -322,6 +323,9 @@ public class PayService {
             return null;
         }else if("5".equals(channel)){
             String sql = "select order_no,'分润成功' as trans_status from pay_order where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("6".equals(channel)){
+            String sql = "select order_no,'二级分润成功' as trans_status from pay_order where id=?";
             return dao.findFirst(sql,channelId);
         }else{
             return null;
