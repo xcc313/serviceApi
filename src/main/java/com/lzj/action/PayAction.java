@@ -74,7 +74,7 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
-            /*Map<String,Object> cardBinMap = payService.cardBin(bankcard);
+            Map<String,Object> cardBinMap = payService.cardBin(bankcard);
             if(cardBinMap==null || cardBinMap.isEmpty() || isEmpty(String.valueOf(cardBinMap.get("bank_no")))){
                 resultMap.put("success",false);
                 resultMap.put("msg", "银行卡无法识别，请换卡");
@@ -86,7 +86,7 @@ public class PayAction extends BaseController {
                 resultMap.put("msg", "不支持信用卡提现，请换借记卡");
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
-            }*/
+            }
             Map<String,Object> checkVerified = checkFourVerified(bankcard,idcard,realname,mobileNo);
             Boolean verifiedResult = (Boolean)checkVerified.get("resultBoolean");
             String verifiedMsg = String.valueOf(checkVerified.get("resultMsg"));
