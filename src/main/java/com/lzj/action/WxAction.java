@@ -439,6 +439,21 @@ public class WxAction extends BaseController{
 					String userNo = String.valueOf(userMap.get("user_no"));
 					response.sendRedirect("/api/dishonestyPage?userNo="+userNo);
 				}
+			}else if("myPayCode".equals(state)){
+				log.info("--------菜单栏--我的收款码---------");
+				String openid = getOpenid(request, code);
+				if(StringUtils.isEmpty(openid) || "NULL".equals(openid) || "null".equals(openid)){
+					log.info("--------openid为空---------");
+					response.sendRedirect("/api/errorPage?errorMsg=获取用户信息异常，请重新进入&errorCode=100000000");
+				}else {
+					Map<String, Object> userMap = weixinService.selectUserByOpenId(openid);
+					if (userMap == null || userMap.isEmpty()) {
+						new UserAction(userService, apiService).insertUser(getUserInfoByOpenid(openid));
+						userMap = weixinService.selectUserByOpenId(openid);
+					}
+					String userNo = encryptUserNo(String.valueOf(userMap.get("user_no")));
+					response.sendRedirect("/pay/toMyPayCode?userNo=" + userNo);
+				}
 			}else if("userInfo".equals(state)){
 				log.info("--------个人中心---------");
 				String openid = getOpenid(request, code);

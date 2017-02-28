@@ -13,7 +13,7 @@ public class CreateMeau {
         OutputStream os=null;
         InputStream is=null;
         try {
-            String access_token = "9pMDMUKsHNQY_qjk7P0T7Ls-vWZjouQVbe1BndkIdtkAnaNyS4D3XUYLGx0jOenA-2_kAo3lEn_OCweNFXLZbsskpBRrH5wGk_HcCWqG7ZCP4IcJkMIS7Mm416ZoXbgpFOWhACALUC";
+            String access_token = "jiexxa5YcmO5mvVJ34Dg1J6AuTe3v3cVnZIy0lviD8chEWQtSL-9I8Ey3eUC4FavWo93dwcO6c9lBjWX0iza8lunex4gHx308iZx-R8y_FpE73lU3txF4v77T5BFqeooNIJiADAVQR";
             String appId = "wx4ee57072d531b1a9";
             //String weixinUrl = "http://www.fcheck.cn";
             String weixinUrl = "http://www.qrcodevip.com";
@@ -31,20 +31,18 @@ public class CreateMeau {
             String zipcodeUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=zipcode&connect_redirect=1#wechat_redirect";
             String verifiedUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=verified&connect_redirect=1#wechat_redirect";
             String dishonestyUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=dishonesty&connect_redirect=1#wechat_redirect";
+            String myPayCodeUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=myPayCode&connect_redirect=1#wechat_redirect";
             String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
             String weiCoinRechargeUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=weiCoinRecharge&connect_redirect=1#wechat_redirect";
 			String menuString="{ \"button\":[ { \"name\":\"生活\", \"sub_button\":[{ \"type\":\"view\", \"name\":\"笑话订阅\", \"url\":\""+jokeUrl+"\" },"
                     + "{ \"type\":\"view\", \"name\":\"邮编查询\", \"url\":\""+zipcodeUrl+"\" }, "
 					+ "{ \"type\":\"view\", \"name\":\"开彩查询\", \"url\":\""+lotteryUrl+"\" }]},"
-					+ "{ \"name\":\"金融\", \"sub_button\":[ { \"type\":\"view\", \"name\":\"失信查询\", \"url\":\""+dishonestyUrl+"\" }, "
+					+ "{ \"name\":\"金融\", \"sub_button\":[ { \"type\":\"view\", \"name\":\"我的收款码\", \"url\":\""+myPayCodeUrl+"\" }, "
 					+ "{ \"type\":\"view\", \"name\":\"银行卡认证\", \"url\":\""+verifiedUrl+"\" }]},"
 					+ "{ \"name\":\"我的\", \"sub_button\":[ { \"type\":\"click\", \"name\":\"签到\", \"key\":\"signIn\" },"
                     + "{ \"type\":\"view\", \"name\":\"微币充值\", \"url\":\""+weiCoinRechargeUrl+"\" },"
                     + "{ \"type\":\"view\", \"name\":\"个人中心\", \"url\":\""+userInfoUrl+"\" }]}"
 					+ "]}";
-            /*String menuString="{ \"button\":[ { \"name\":\"二维码优汇\",  \"type\":\"view\", \"url\":\""+qrCodeUrl+"\" }, "
-                    + "{ \"name\":\"我的控制台\",  \"type\":\"view\", \"url\":\""+userInfo+"\" }";
-            menuString += "]}";*/
 
             System.out.println("menuString-->"+menuString);
             os=huc.getOutputStream();
