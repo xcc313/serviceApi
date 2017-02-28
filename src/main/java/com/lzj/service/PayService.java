@@ -66,7 +66,7 @@ public class PayService {
 
     public Map<String,Object> selectPurseOrder(String orderNo){
         String sql = "select * from purse_cash where order_no=?";
-        return dao.findFirst(sql,orderNo);
+        return dao.findFirst(sql, orderNo);
     }
 
     public String getParamValue(String PARAM_KEY){
@@ -76,7 +76,7 @@ public class PayService {
 
     public void updatePayOrder(String orderStatus,String orderMsg,String transStatus,String orderNo) throws SQLException {
         String sql = "update pay_order set order_status=?,order_msg=?,trans_status=? where order_no=?";
-        dao.update(sql,new Object[]{orderStatus,orderMsg,transStatus,orderNo});
+        dao.update(sql, new Object[]{orderStatus, orderMsg, transStatus, orderNo});
     }
 
     public void updatePurseOrder(String orderStatus,String orderMsg,String cashStatus,String orderNo) throws SQLException {
@@ -122,10 +122,16 @@ public class PayService {
         } catch (Exception e) {
             e.printStackTrace();
             try {
-                log.info("入账sql回滚,orderNo="+orderNo);
+                log.info("入账sql回滚,orderNo=" + orderNo);
                 conn.rollback();
             } catch (SQLException e1) {
                 e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -187,6 +193,12 @@ public class PayService {
             } catch (SQLException e1) {
                 e1.printStackTrace();
             }
+        }finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
         return extractionResultMap;
     }
@@ -214,7 +226,7 @@ public class PayService {
             String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
             int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql, new Object[]{parentNo, "IN", parentProfitAmount, new Date(), channel, payOrderMap.get("id")}, conn);
             String addBalanceSql = "update user set balance=balance+? where user_no=?";
-            int updateResultRow = dao.updateByTranscation(addBalanceSql,new Object[]{parentProfitAmount,parentNo},conn);
+            int updateResultRow = dao.updateByTranscation(addBalanceSql, new Object[]{parentProfitAmount, parentNo}, conn);
             log.info("orderNo:{},parentProfit,sql结果，insertResultRow:{},updateResultRow:{}",new Object[]{orderNo,insertResultRow,updateResultRow});
             if(insertResultRow==1 && updateResultRow==1){
                 log.info("分润sql提交,orderNo="+orderNo);
@@ -239,6 +251,12 @@ public class PayService {
                 return profitResultMap;
             } catch (SQLException e1) {
                 e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
         return profitResultMap;
@@ -303,6 +321,12 @@ public class PayService {
                 return extractionResultMap;
             } catch (SQLException e1) {
                 e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
         return extractionResultMap;

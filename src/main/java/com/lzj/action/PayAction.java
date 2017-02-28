@@ -1031,6 +1031,9 @@ public class PayAction extends BaseController {
                     apiService.insertMethod("verified_history", paramsMap);
                     apiService.addApiAccessNum("use_num", "verified");
                     verifiedHistoryMap = apiService.getOneMethod("verified_history", verifiedWhereMap,"id","desc",0);
+                }else{
+                    verifiedHistoryMap.put("isok","0");
+                    verifiedHistoryMap.put("code",msg);
                 }
             }else{
                 log.info("有此用户实名认证历史记录");
