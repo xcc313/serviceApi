@@ -643,16 +643,17 @@ public class PayAction extends BaseController {
             orderMap.put("order_no",orderNo);
             orderMap.put("trans_amount",amount);
             BigDecimal feeRate = new BigDecimal("0.0049");
+            List<Map<String,Object>> sendMerchantNameList = payService.selectSendMerchantName();
+            Random random = new Random();
+            int index =random.nextInt(sendMerchantNameList.size());
+            body = String.valueOf(sendMerchantNameList.get(index).get("send_merchant_name"));
             if("wxNative".equals(payType)){
                 orderMap.put("acq_name","WOFU_WX");
                 feeRate = new BigDecimal(String.valueOf(userMap.get("wx_trans_fee_rate")));
+
             }else if("alipay".equals(payType)){
                 //暂无支付宝交易费率设置
                 orderMap.put("acq_name","WOFU_ZFB");
-                List<Map<String,Object>> sendMerchantNameList = payService.selectSendMerchantName();
-                Random random = new Random();
-                int index =random.nextInt(sendMerchantNameList.size());
-                body = String.valueOf(sendMerchantNameList.get(index).get("send_merchant_name"));
             }
             BigDecimal fee = (new BigDecimal(amount).multiply(feeRate)).setScale(2, BigDecimal.ROUND_UP);
             orderMap.put("trans_fee_rate",feeRate);
@@ -669,7 +670,7 @@ public class PayAction extends BaseController {
             log.info("支付写入订单，orderMap=" + orderMap);
             payService.insertMethod("pay_order",orderMap);
             String callbackUrl = payService.getParamValue("pay_callback_url");
-            Map<String,Object> createOrderResultMap = new WoFuAction().createOrder(payType,orderNo,body,amount,callbackUrl);
+            Map<String,Object> createOrderResultMap = new WoFuAction().createOrder(payType,orderNo,body,amount,callbackUrl,body,userNo);
             log.info("上游下单返回，createOrderResultMap="+createOrderResultMap);
             Map<String,String> headMap = (Map<String,String>)createOrderResultMap.get("head");
             Map<String,String> contentMap = (Map<String,String>)createOrderResultMap.get("content");

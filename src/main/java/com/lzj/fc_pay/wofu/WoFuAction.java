@@ -24,9 +24,14 @@ public class WoFuAction {
      * @param callbackUrl 回调地址，交易成功回调此地址
      * @return
      */
-    public Map<String, Object> createOrder(String payType,String orderNo, String body, String transAmount, String callbackUrl) throws Exception{
+    public Map<String, Object> createOrder(String payType,String orderNo, String body, String transAmount, String callbackUrl,String merchantName,String merchantNo) throws Exception{
         log.info("------------二维码支付下单--------------payType="+payType);
-        String jsonStr = "{\"bizName\":\""+payType+"\",\"data\":{\"orderNo\":\""+orderNo+"\",\"body\":\""+body+"\",\"transAmount\":\""+transAmount+"\",\"callbackUrl\":\""+callbackUrl+"\"}}";
+        String jsonStr = "";
+        if("wxNative".equals(payType)){
+            jsonStr = "{\"bizName\":\"wxNative\",\"data\":{\"orderNo\":\""+orderNo+"\",\"body\":\""+body+"\",\"transAmount\":\""+transAmount+"\",\"callbackUrl\":\""+callbackUrl+"\",\"merchantName\":\""+merchantName+"\",\"merchantNo\":\""+merchantNo+"\"}}";
+        }else if("alipay".equals(payType)){
+            jsonStr = "{\"bizName\":\"alipay\",\"data\":{\"orderNo\":\""+orderNo+"\",\"body\":\""+body+"\",\"transAmount\":\""+transAmount+"\",\"callbackUrl\":\""+callbackUrl+"\"}}";
+        }
         log.info("------------二维码支付下单jsonStr--------------"+jsonStr);
         DESPlus des = new DESPlus(WoFuConfig.SECRET_KEY);
         String json = des.encrypt(jsonStr);
@@ -77,7 +82,7 @@ public class WoFuAction {
 
     public static void main(String[] args) {
         try {
-            Map<String,Object> resultMap = new WoFuAction().createOrder("alipay","100004","路遥里科技收款","0.02","");
+            Map<String,Object> resultMap = new WoFuAction().createOrder("wxNative","100005","路遥里科技收款","0.02","","路遥里科技","10001231");
             System.out.println(resultMap);
         } catch (Exception e) {
             e.printStackTrace();
