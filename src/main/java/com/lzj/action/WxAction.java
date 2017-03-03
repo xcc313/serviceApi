@@ -118,7 +118,6 @@ public class WxAction extends BaseController{
 					Map<String,Object> userMap = userService.selectUserByOpenId(userNameOpenId);
 					if(userMap==null || userMap.isEmpty()){
 						userMap = new UserAction(userService,apiService).insertUser(getUserInfoByOpenid(userNameOpenId));
-						new ApiAction(apiService).freeSubJoke("3",String.valueOf(userMap.get("user_no")));
 						Map<String,Object> kfParamsMap = new HashMap<String, Object>();
 						kfParamsMap.put("accessToken",getAccessToken());
 						kfParamsMap.put("toUserOpenId",userNameOpenId);
@@ -126,7 +125,8 @@ public class WxAction extends BaseController{
 						Thread thread = new Thread(new KFNotifyNotice("kefuMessage_text",kfParamsMap));
 						thread.start();
 						//发送赠送笑话的模板消息
-						String appId = "wx4ee57072d531b1a9";
+						//new ApiAction(apiService).freeSubJoke("3",String.valueOf(userMap.get("user_no")));
+						/*String appId = "wx4ee57072d531b1a9";
 						String redirect_uri = java.net.URLEncoder.encode("http://www.qrcodevip.com/wx/auth.do");
 						String jokeUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=joke&connect_redirect=1#wechat_redirect";
 						Map<String,String> modelMap = new HashMap<String, String>();
@@ -136,7 +136,7 @@ public class WxAction extends BaseController{
 						modelMap.put("keyword3","赠送时长一周");
 						modelMap.put("remark","如需变更/取消请点击详情查看");
 						modelMap.put("descUrl",jokeUrl);
-						sendWXModelMsg(userNameOpenId, "JnFiGYhw6xgEa8lA-ViYoCrUb5QSwxpFXIXQIpWI7o0", modelMap);
+						sendWXModelMsg(userNameOpenId, "JnFiGYhw6xgEa8lA-ViYoCrUb5QSwxpFXIXQIpWI7o0", modelMap);*/
 					}else{
 						userService.updateUnsubscribe("subscribe",userNameOpenId);
 					}
@@ -467,7 +467,7 @@ public class WxAction extends BaseController{
 						userMap = weixinService.selectUserByOpenId(openid);
 					}
 					String userNo = String.valueOf(userMap.get("user_no"));
-					response.sendRedirect("/user/userInfo?userNo=" + userNo);
+					response.sendRedirect("/user/userInfo?userNo=" + encryptUserNo(userNo));
 				}
 			}else if("weiCoinRecharge".equals(state)){
 				log.info("--------微币充值---------");
@@ -482,7 +482,7 @@ public class WxAction extends BaseController{
 						userMap = weixinService.selectUserByOpenId(openid);
 					}
 					String userNo = String.valueOf(userMap.get("user_no"));
-					response.sendRedirect("/user/rechargeCoin?userNo=" + userNo);
+					response.sendRedirect("/user/rechargeCoin?userNo=" + encryptUserNo(userNo));
 				}
 			}
 		} catch (Exception e) {

@@ -126,4 +126,9 @@ public class UserService {
             dao.update(updateSubListSql,userNo);
         }
     }
+
+    public void insertOperationLog(String operator,String operatot_type,String operator_table,String operator_detail) throws SQLException {
+        String sql = "insert into operator_log(operator,operatot_type,operator_table,operator_detail,operator_time) values(?,?,?,?,?)";
+        dao.insertReturnId(sql, new Object[]{operator, operatot_type, operator_table, operator_detail, new Date()});
+    }
 }

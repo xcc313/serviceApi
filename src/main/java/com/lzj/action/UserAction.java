@@ -92,8 +92,23 @@ public class UserAction extends BaseController {
     @RequestMapping(value="/rechargeCoin",method = RequestMethod.GET)
     public String rechargeCoin(final ModelMap model,@RequestParam Map<String, String> params){
         log.info("--------rechargeCoin-----params=" + params);
+        String encryptUserNo = params.get("userNo");
+        String userNo = "";
         try {
-            String userNo = params.get("userNo");
+            userNo = decryptUserNo(encryptUserNo);
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.info("--------风险操作,警告一次，下次关闭商户-----");
+            try {
+                userService.insertOperationLog("", "risk", "user", "userInfo,params=" + params);
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            model.put("errorMsg", "风险操作,警告一次，下次关闭商户");
+            model.put("errorCode", "1001");
+            return "errorPage";
+        }
+        try {
             Map<String,Object> whereMap = new HashMap<String, Object>();
             whereMap.put("user_no",userNo);
             Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
@@ -146,8 +161,23 @@ public class UserAction extends BaseController {
     @RequestMapping(value="/userInfo",method = RequestMethod.GET)
     public String userInfo(final ModelMap model,@RequestParam Map<String, String> params){
         log.info("--------userInfo-----params=" + params);
+        String encryptUserNo = params.get("userNo");
+        String userNo = "";
         try {
-            String userNo = params.get("userNo");
+            userNo = decryptUserNo(encryptUserNo);
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.info("--------风险操作,警告一次，下次关闭商户-----");
+            try {
+                userService.insertOperationLog("", "risk", "user", "userInfo,params=" + params);
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            model.put("errorMsg", "风险操作,警告一次，下次关闭商户");
+            model.put("errorCode", "1001");
+            return "errorPage";
+        }
+        try {
             Map<String,Object> whereMap = new HashMap<String, Object>();
             whereMap.put("user_no",userNo);
             Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
@@ -156,7 +186,6 @@ public class UserAction extends BaseController {
                 model.put("errorCode", userNo);
                 return "errorPage";
             }else{
-                String encryptUserNo = encryptUserNo(userNo);
                 userMap.put("encryptUserNo",encryptUserNo);
                 model.put("userMap", userMap);
                 return "user/userInfo";
