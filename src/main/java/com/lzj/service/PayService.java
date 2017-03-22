@@ -88,6 +88,47 @@ public class PayService {
         dao.update(sql,new Object[]{orderStatus,orderMsg,cashStatus,cashTime,orderNo});
     }
 
+    public List<Map<String,Object>> selectFastpayCardByUserNo(String userNo){
+        String sql = "select * from fastpay_card where user_no=?";
+        return dao.find(sql,userNo);
+    }
+
+    public Map<String,Object> selectFastpayCardById(String id){
+        String sql = "select * from fastpay_card where id=?";
+        return dao.findFirst(sql, id);
+    }
+
+    public List<Map<String,Object>> selectUnipayCard(String userNo){
+        String sql = "select * from unipay_card where user_no=? and status='0'";
+        return dao.find(sql, userNo);
+    }
+
+    public Map<String,Object> selectUnipayCard(String accountNo,String userNo){
+        String sql = "select * from unipay_card where account_no=? and user_no=? and status='0'";
+        return dao.findFirst(sql, new Object[]{accountNo,userNo});
+    }
+
+    public void insertUnipayCard(String user_no,String account_no) throws SQLException {
+        String sql = "insert into unipay_card(user_no,account_no,status,create_time) values(?,?,?,?)";
+        dao.insertReturnId(sql,new Object[]{user_no,account_no,"0",new Date()});
+    }
+
+    public void insertFastpayCard(String user_no,String account_name,String account_no,String id_card_no,String mobile_no,String bank_name) throws SQLException {
+        String sql = "insert into fastpay_card(user_no,account_name,account_no,id_card_no,mobile_no,bank_name,create_time) values(?,?,?,?,?,?,?)";
+        dao.insertReturnId(sql,new Object[]{user_no,account_name,account_no,id_card_no,mobile_no,bank_name,new Date()});
+    }
+
+    //根据手机号得到最新短信发送记录
+    public Map<String,Object> getSmsByMobile(String mobileNo){
+        String sql = "select * from sms_log where mobile_no=? order by id desc";
+        return dao.findFirst(sql, mobileNo);
+    }
+
+    public void updateSmsCodeStatus(String mobileNo,String code) throws SQLException {
+        String sql = "update sms_log set code_status='1' where mobile_no=? and sms_code=?";
+        dao.update(sql,new Object[]{mobileNo,code});
+    }
+
     public void recharge(String orderNo){
         Connection conn = dao.getConnection();
         try {

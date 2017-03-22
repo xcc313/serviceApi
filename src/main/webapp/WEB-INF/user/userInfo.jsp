@@ -357,7 +357,7 @@
 
     <div class="weui_msg">
         <div class="weui_extra_area">
-            <a href="${ctx}/user/rechargeCoin?userNo=${userMap.user_no}">查看微币规则详情</a>
+            <a href="${ctx}/user/rechargeCoin?userNo=${userMap.encryptUserNo}">查看微币规则详情</a>
         </div>
     </div>
 <%--

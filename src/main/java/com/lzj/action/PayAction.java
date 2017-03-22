@@ -2,6 +2,7 @@ package com.lzj.action;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.lzj.captcha.CaptchaServlet;
 import com.lzj.fc_pay.wofu.WoFuAction;
 import com.lzj.fc_pay.wofu.WoFuConfig;
 import com.lzj.service.ApiService;
@@ -14,14 +15,18 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -104,6 +109,7 @@ public class PayAction extends BaseController {
             updateMap.put("id_card_no",idcard);
             updateMap.put("bank_no",bankcard);
             updateMap.put("wx_trans_fee_rate","0.0049");
+            updateMap.put("fastpay_trans_fee_rate","0.0059");
             updateMap.put("extraction_fee","0");
             updateMap.put("real_name",realname);
             int resultRow = apiService.updateMethod("user", updateMap, updateWhereMap);
@@ -531,23 +537,66 @@ public class PayAction extends BaseController {
             }
             if (userAgent.toLowerCase().indexOf("MicroMessenger".toLowerCase()) > -1) {
                 log.info("------------微信扫码---------");
-                model.put("payType", "wxNative");
+                model.put("scanCodeWay", "wxNative");
             }else if(userAgent.toLowerCase().indexOf("AlipayClient".toLowerCase()) > -1) {
                 log.info("----------支付宝扫码---------");
-                model.put("payType", "alipay");
+                model.put("scanCodeWay", "alipay");
             }else{
                 log.info("------------当做微信扫码---------");
-                model.put("payType", "wxNative");
+                model.put("scanCodeWay", "wxNative");
             }
             model.put("userNo",encryptUserNo);
             model.put("merchantName", String.valueOf(userMap.get("merchant_name")));
-            model.put("headimgurl",String.valueOf(userMap.get("headimgurl")));
+            model.put("headimgurl", String.valueOf(userMap.get("headimgurl")));
             return "user/pay";
 
         } catch (Exception e) {
             e.printStackTrace();
             model.put("errorMsg","系统异常");
             model.put("errorCode", "toPay100000000");
+            return "errorPage";
+        }
+    }
+
+    @RequestMapping(value="choosePayWay")
+    public String choosePayWay(final ModelMap model, @RequestParam Map<String,String> params,@RequestHeader("User-Agent") String userAgent){
+        log.info("-------------choosePayWay到选择支付方式页面----------params="+params+",userAgent="+userAgent);
+        String encryptUserNo = params.get("userNo");
+        String amount = params.get("amount");
+        String scanCodeWay = params.get("scanCodeWay");
+        try {
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                model.put("errorMsg","无此用户");
+                model.put("errorCode","choosePayWay"+encryptUserNo);
+                return "errorPage";
+            }
+            String userStatus = String.valueOf(userMap.get("status"));
+            if("CLOSE".equals(userStatus)){
+                model.put("errorMsg", "该用户已注销");
+                model.put("errorCode", "choosePayWay" + encryptUserNo);
+                return "errorPage";
+            }
+            List<Map<String,Object>> unipayCardList = payService.selectUnipayCard(userNo);
+            if(unipayCardList!=null && !unipayCardList.isEmpty()){
+                model.put("unipayCardListSize", unipayCardList.size());
+            }else{
+                model.put("unipayCardListSize", 0);
+            }
+            model.put("unipayCardList", unipayCardList);
+            model.put("scanCodeWay",scanCodeWay);
+            model.put("userNo",encryptUserNo);
+            model.put("amount",amount);
+            model.put("merchantName", String.valueOf(userMap.get("merchant_name")));
+            model.put("mobileNo", String.valueOf(userMap.get("mobile_no")));
+            return "user/choosePayWay";
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.put("errorMsg","系统异常");
+            model.put("errorCode", "choosePayWay100000000");
             return "errorPage";
         }
     }
@@ -559,7 +608,7 @@ public class PayAction extends BaseController {
         String codeUrl = params.get("codeUrl");
         String amount = params.get("amount");
         String encryptUserNo = params.get("userNo");
-        String payType = params.get("payType");
+        String scanCodeWay = params.get("scanCodeWay");
         try {
             String userNo = decryptUserNo(encryptUserNo);
             Map<String,Object> whereMap = new HashMap<String, Object>();
@@ -576,7 +625,7 @@ public class PayAction extends BaseController {
                 model.put("errorCode", "toPay" + encryptUserNo);
                 return "errorPage";
             }
-            model.put("payType",payType);
+            model.put("scanCodeWay",scanCodeWay);
             model.put("codeUrl", codeUrl);
             model.put("amount", amount);
             model.put("merchantName", String.valueOf(userMap.get("merchant_name")));
@@ -587,6 +636,145 @@ public class PayAction extends BaseController {
             model.put("errorMsg","系统异常");
             model.put("errorCode", "toPay100000000");
             return "errorPage";
+        }
+
+    }
+
+    //到快捷支付页面
+    @RequestMapping(value = "toFastPay")
+    public String toFastPay(final ModelMap model, @RequestParam Map<String,String> params) {
+        log.info("--------到快捷支付页面---------params="+params);
+        String amount = params.get("amount");
+        String encryptUserNo = params.get("userNo");
+        String payType = params.get("payType");
+        try {
+            if(!"fastPay".equals(payType)){
+                model.put("errorMsg","请选择快捷支付");
+                model.put("errorCode","toFastPay"+encryptUserNo);
+                return "errorPage";
+            }
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                model.put("errorMsg","无此用户");
+                model.put("errorCode","toFastPay"+encryptUserNo);
+                return "errorPage";
+            }
+            String userStatus = String.valueOf(userMap.get("status"));
+            if("CLOSE".equals(userStatus)){
+                model.put("errorMsg","该用户已注销");
+                model.put("errorCode", "toFastPay" + encryptUserNo);
+                return "errorPage";
+            }
+            List<Map<String,Object>> fastpayCardList = payService.selectFastpayCardByUserNo(userNo);
+            for(Map<String,Object> tmp:fastpayCardList){
+                String account_no = String.valueOf(tmp.get("account_no"));
+                tmp.put("account_no",account_no.substring(0,4)+"********"+account_no.substring(account_no.length()-4));
+            }
+            model.put("fastpayCardList", fastpayCardList);
+            model.put("amount", amount);
+            model.put("userNo", encryptUserNo);
+            model.put("merchantName", String.valueOf(userMap.get("merchant_name")));
+            String real_name = String.valueOf(userMap.get("real_name"));
+            String id_card_no = String.valueOf(userMap.get("id_card_no"));
+            String mobile_no = String.valueOf(userMap.get("mobile_no"));
+            model.put("mobileNo", mobile_no.substring(0,3)+"****"+mobile_no.substring(mobile_no.length()-4));
+            model.put("realName", real_name);
+            model.put("idCardNo", id_card_no.substring(0,6)+"********"+id_card_no.substring(id_card_no.length()-4));
+            return "user/fastPay";
+        }catch (Exception e){
+            e.printStackTrace();
+            model.put("errorMsg", "系统异常");
+            model.put("errorCode", "toFastPay100000000");
+            return "errorPage";
+        }
+
+    }
+
+    //快捷支付绑定银行卡
+    @RequestMapping(value = "bindFastpayCard")
+    public void bindFastpayCard(final ModelMap model, @RequestParam Map<String,String> params,HttpServletRequest request,HttpServletResponse response) {
+        log.info("--------快捷支付绑定银行卡---------params="+params);
+        Map<String,Object> resultMap = new HashMap<String, Object>();
+        String accountNo = params.get("accountNo");
+        String encryptUserNo = params.get("userNo");
+        String picVerify = params.get("picVerify");
+        try {
+            if(isEmpty(accountNo) || isEmpty(encryptUserNo) || isEmpty(picVerify)){
+                resultMap.put("success", false);
+                resultMap.put("msg", "必要信息为空");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            String userNo = decryptUserNo(encryptUserNo);
+            Map<String,Object> whereMap = new HashMap<String, Object>();
+            whereMap.put("user_no",userNo);
+            Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+            if(userMap==null || userMap.isEmpty()){
+                resultMap.put("success", false);
+                resultMap.put("msg", "无此用户");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            String userStatus = String.valueOf(userMap.get("status"));
+            if("CLOSE".equals(userStatus)){
+                resultMap.put("success", false);
+                resultMap.put("msg", "用户已注销");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            HttpSession httpSession = request.getSession();
+            String sysPicVerify = String.valueOf(httpSession.getAttribute(CaptchaServlet.KEY_CAPTCHA));
+            if(!(picVerify.toUpperCase()).equals(sysPicVerify.toUpperCase())){
+                resultMap.put("success", false);
+                resultMap.put("msg", "图形验证码不正确");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            Map<String,Object> cardBinMap = payService.cardBin(accountNo);
+            if(cardBinMap==null || cardBinMap.isEmpty() || isEmpty(String.valueOf(cardBinMap.get("bank_no")))){
+                resultMap.put("success",false);
+                resultMap.put("msg", "银行卡无法识别，请换卡");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            if(!"贷记卡".equals(String.valueOf(cardBinMap.get("card_type"))) && !"准贷记卡".equals(String.valueOf(cardBinMap.get("card_type")))){
+                resultMap.put("success",false);
+                resultMap.put("msg", "快捷支付请绑定信用卡");
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            String bankName = String.valueOf(cardBinMap.get("bank_name"));
+            String real_name = String.valueOf(userMap.get("real_name"));
+            String id_card_no = String.valueOf(userMap.get("id_card_no"));
+            String mobile_no = String.valueOf(userMap.get("mobile_no"));
+            Map<String,Object> checkVerified = checkFourVerified(accountNo, id_card_no, real_name, mobile_no);
+            Boolean verifiedResult = (Boolean)checkVerified.get("resultBoolean");
+            String verifiedMsg = String.valueOf(checkVerified.get("resultMsg"));
+            if(!verifiedResult){
+                resultMap.put("success",false);
+                resultMap.put("msg", verifiedMsg);
+                outJson(JSONObject.toJSONString(resultMap), response);
+                return;
+            }
+            payService.insertFastpayCard(userNo,real_name,accountNo,id_card_no,mobile_no,bankName);
+            List<Map<String,Object>> fastpayCardList = payService.selectFastpayCardByUserNo(userNo);
+            for(Map<String,Object> tmp:fastpayCardList){
+                String account_no = String.valueOf(tmp.get("account_no"));
+                tmp.put("account_no",account_no.substring(0,4)+"********"+account_no.substring(account_no.length()-4));
+            }
+            resultMap.put("success", true);
+            resultMap.put("msg", fastpayCardList);
+            outJson(JSONObject.toJSONString(resultMap), response);
+            return;
+        }catch (Exception e){
+            e.printStackTrace();
+            resultMap.put("success", false);
+            resultMap.put("msg", "系统异常");
+            outJson(JSONObject.toJSONString(resultMap), response);
+            return;
         }
 
     }
@@ -613,9 +801,9 @@ public class PayAction extends BaseController {
                 return;
             }
             String userStatus = String.valueOf(userMap.get("status"));
-            if(!"NORMAL".equals(userStatus)){
+            if("CLOSE".equals(userStatus)){
                 resultMap.put("success",false);
-                resultMap.put("msg", "用户状态异常");
+                resultMap.put("msg", "用户已被关闭");
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
@@ -642,18 +830,95 @@ public class PayAction extends BaseController {
             orderMap.put("openid",String.valueOf(userMap.get("openid")));
             orderMap.put("order_no",orderNo);
             orderMap.put("trans_amount",amount);
-            BigDecimal feeRate = new BigDecimal("0.0049");
+            //BigDecimal feeRate = new BigDecimal("0.0049");
+            BigDecimal feeRate = new BigDecimal(String.valueOf(userMap.get("wx_trans_fee_rate")));
             List<Map<String,Object>> sendMerchantNameList = payService.selectSendMerchantName();
             Random random = new Random();
             int index =random.nextInt(sendMerchantNameList.size());
             body = String.valueOf(sendMerchantNameList.get(index).get("send_merchant_name"));
+            Map<String,Object> cardInfoMap = new HashMap<>();
             if("wxNative".equals(payType)){
                 orderMap.put("acq_name","WOFU_WX");
-                feeRate = new BigDecimal(String.valueOf(userMap.get("wx_trans_fee_rate")));
-
             }else if("alipay".equals(payType)){
                 //暂无支付宝交易费率设置
                 orderMap.put("acq_name","WOFU_ZFB");
+            }else if("fastPay".equals(payType)){
+                orderMap.put("acq_name","WOFU_FAST");
+                String smsCode = params.get("smsCode");
+                String cvn2 = params.get("cvn2");
+                String expDate = params.get("expDate");
+                String fastPayCardId = params.get("fastPayCardId");
+                if(isEmpty(smsCode) || isEmpty(cvn2) || isEmpty(expDate) || isEmpty(fastPayCardId)){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "必要信息为空");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                Map<String,Object> fastpayCardMap = payService.selectFastpayCardById(fastPayCardId);
+                if(fastpayCardMap==null || fastpayCardMap.isEmpty()){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "请先添加该卡");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                Map<String,Object> smsLog = payService.getSmsByMobile(String.valueOf(userMap.get("mobile_no")));
+                String serviceSmsCode = String.valueOf(smsLog.get("sms_code"));
+                String smsCodeStatus = String.valueOf(smsLog.get("code_status"));
+                String smsCreateTime = String.valueOf(smsLog.get("create_time"));
+                if("1".equals(smsCodeStatus)){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "该验证码已使用，请重新获取");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                if(!smsCode.equals(serviceSmsCode)){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "短信验证码不匹配");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                if(new Date().getTime()-sdf.parse(smsCreateTime).getTime()>10*60*1000){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "短信验证码已过期，请重新获取");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                payService.updateSmsCodeStatus(String.valueOf(userMap.get("mobile_no")),serviceSmsCode);
+                feeRate = new BigDecimal(String.valueOf(userMap.get("fastpay_trans_fee_rate")));
+                cardInfoMap.put("accountName",String.valueOf(fastpayCardMap.get("account_name")));
+                cardInfoMap.put("accountNo",String.valueOf(fastpayCardMap.get("account_no")));
+                cardInfoMap.put("idCardNo",String.valueOf(fastpayCardMap.get("id_card_no")));
+                cardInfoMap.put("mobileNo",String.valueOf(fastpayCardMap.get("mobile_no")));
+                cardInfoMap.put("cvn2",cvn2);
+                cardInfoMap.put("expDate",expDate);
+            }else if("unipay".equals(payType)){
+                orderMap.put("acq_name","WOFU_UNIPAY");
+                String unipayCard = params.get("unipayCard");
+                String isReme = params.get("isReme");//是否记住  0不记  1记住
+                if(isEmpty(unipayCard)){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "必要信息为空");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                Map<String,Object> cardBinMap = payService.cardBin(unipayCard);
+                if(cardBinMap==null || cardBinMap.isEmpty() || isEmpty(String.valueOf(cardBinMap.get("bank_no")))){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "银行卡无法识别，请换卡或反馈至公众号");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                Map<String,Object> unipayCardMap = payService.selectUnipayCard(unipayCard,userNo);
+                if(Boolean.parseBoolean(isReme) && (unipayCardMap==null || unipayCardMap.isEmpty())){
+                    payService.insertUnipayCard(userNo, unipayCard);
+                }
+                feeRate = new BigDecimal(String.valueOf(userMap.get("fastpay_trans_fee_rate")));
+                String pay_callback_url = payService.getParamValue("pay_callback_url");
+                String unipay_front_url = payService.getParamValue("unipay_front_url");
+                cardInfoMap.put("accountNo",unipayCard);
+                cardInfoMap.put("callbackUrl",pay_callback_url);
+                cardInfoMap.put("successUrl",unipay_front_url);
             }
             BigDecimal fee = (new BigDecimal(amount).multiply(feeRate)).setScale(2, BigDecimal.ROUND_UP);
             orderMap.put("trans_fee_rate",feeRate);
@@ -670,7 +935,7 @@ public class PayAction extends BaseController {
             log.info("支付写入订单，orderMap=" + orderMap);
             payService.insertMethod("pay_order",orderMap);
             String callbackUrl = payService.getParamValue("pay_callback_url");
-            Map<String,Object> createOrderResultMap = new WoFuAction().createOrder(payType,orderNo,body,amount,callbackUrl,body,userNo);
+            Map<String,Object> createOrderResultMap = new WoFuAction().createOrder(payType,orderNo,body,amount,callbackUrl,body,userNo,cardInfoMap);
             log.info("上游下单返回，createOrderResultMap="+createOrderResultMap);
             Map<String,String> headMap = (Map<String,String>)createOrderResultMap.get("head");
             Map<String,String> contentMap = (Map<String,String>)createOrderResultMap.get("content");
@@ -680,6 +945,9 @@ public class PayAction extends BaseController {
                 if("SUCCESS".equals(resultCode)){
                     payService.updatePayOrder("1","提交上游成功","0",orderNo);
                     String qrUrl = contentMap.get("qrUrl");
+                    if("unipay".equals(payType)){
+                        qrUrl = contentMap.get("url_pay");
+                    }
                     resultMap.put("success", true);
                     resultMap.put("msg", qrUrl);
                     outJson(JSONObject.toJSONString(resultMap), response);
@@ -815,6 +1083,43 @@ public class PayAction extends BaseController {
         }
     }
 
+    //到快捷支付页面
+    @RequestMapping(value = "resultUrl")
+    public String resultUrl(final ModelMap model, @RequestParam Map<String,String> params) {
+        log.info("--------到结果页面---------params="+params);
+        try {
+            model.put("msgTitle", "交易成功");
+            model.put("msgDesc", "订单号：123123123123");
+            return "user/fastPay";
+        }catch (Exception e){
+            e.printStackTrace();
+            model.put("errorMsg","交易失败");
+            model.put("errorCode", "123123123123");
+            return "errorPage";
+        }
+
+    }
+
+    //银联支付回调
+    @RequestMapping(value = "unipayFrontCallback")
+    public String unipayCallback(final ModelMap model, HttpServletRequest request,@RequestParam Map<String,String> params) {
+        log.info("银联支付回调，params="+params);
+        //捷触前端回调，params=[sign_method:01, resp_msg:success, card_no:6212264000021437450, order_no:17904598221716, currency:156, version:1.0, sign:6bd5c15c80641986393468e450e783478119a81458276a00847c31ad772e9992646b8b2345092e40775539c08551000be524772c4e40296c9522f990245139d467947ee762e6b55836d7f328ec00d239787fc12f7e04ab6229dede9488ba7447f34839f8998c5c0a7dffabcb991a13f411d556bc9556d7650b0753529f233f47, amount:1000, stlm_date:0320, trans_code:02, mer_code:806075500020001, txn_date:20170320135526, resp_code:00]
+        String respCode = params.get("resp_code");
+        String respMsg = params.get("resp_msg");
+        String orderNo = params.get("order_no");
+        if("00".equals(respCode)){
+            model.put("result", "SUCCESS");
+            model.put("resultTitle", "支付成功");
+            model.put("resultDesc", "订单编号:"+orderNo);
+        }else{
+            model.put("result", "FAIL");
+            model.put("resultTitle", "支付失败");
+            model.put("resultDesc", "订单编号:"+orderNo);
+        }
+        return "resultPage";
+    }
+
     @RequestMapping(value="callbackWow")
     public void callbackWow(@RequestParam Map<String, String> params, HttpServletResponse response) {
         log.info("---------callbackWow---------params=" + params);
@@ -832,7 +1137,7 @@ public class PayAction extends BaseController {
                 String resultMsg = String.valueOf(headMap.get("result_msg"));
                 Map<String,Object> contentMap = LZJUtil.jsonToMap(contentStr);
                 String orderNo = String.valueOf(contentMap.get("order_no"));
-                if("wxNative".equals(bizName) || "alipay".equals(bizName)){
+                if("wxNative".equals(bizName) || "alipay".equals(bizName) || "unipay".equals(bizName)){
                     log.info("支付回调,orderNo="+orderNo);
                     Map<String,Object> orderMap = payService.selectPayOrder(orderNo);
                     if(orderMap==null || orderMap.isEmpty()){
@@ -848,7 +1153,8 @@ public class PayAction extends BaseController {
                     log.info("更新订单信息,orderNo="+orderNo);
                     if("SUCCESS".equals(resultCode)){
                         payService.recharge(orderNo);
-                        //发送收款成功模板消息
+                        collbackModelMsg(orderNo);
+                        /*//发送收款成功模板消息
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         String appId = payService.getParamValue("AppID");
                         String weixinUrl = payService.getParamValue("weixinUrl");
@@ -910,7 +1216,7 @@ public class PayAction extends BaseController {
                                     }
                                 }
                             }
-                        }
+                        }*/
                     }else if("FAIL".equals(resultCode)){
                         payService.updatePayOrder("3",resultMsg,"2",orderNo);
                     }else{
@@ -947,6 +1253,73 @@ public class PayAction extends BaseController {
             response.setStatus(204);
         }
 
+    }
+
+    public void collbackModelMsg(String orderNo) throws Exception {
+        Map<String,Object> orderMap = payService.selectPayOrder(orderNo);
+        //发送收款成功模板消息
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String appId = payService.getParamValue("AppID");
+        String weixinUrl = payService.getParamValue("weixinUrl");
+        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do","UTF-8");
+        String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
+        String transAmount = String.valueOf(orderMap.get("trans_amount"));
+        String userNo = String.valueOf(orderMap.get("user_no"));
+        Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
+        String openid = String.valueOf(userMap.get("openid"));
+        String merchantName = String.valueOf(userMap.get("merchant_name"));
+        Map<String,String> paramsMap = new HashMap<>();
+        paramsMap.put("first","恭喜您有一笔收款到账");
+        paramsMap.put("keyword1",merchantName);
+        paramsMap.put("keyword2",transAmount+"元");
+        paramsMap.put("keyword3",sdf.format(new Date()));
+        paramsMap.put("remark","点击“个人中心”--“余额”可进行提现");
+        paramsMap.put("descUrl",userInfoUrl);
+        wxAction.sendWXModelMsg(openid,"Oce0qp_QYtfpVy0o4kr-ZboGmtd1gmgdlR46Pyzqoac",paramsMap);
+        //上级分润
+        String parentNo = String.valueOf(userMap.get("parent_no"));
+        if(isNotEmpty(parentNo)){
+            Map<String,Object> parentMap = payService.selectUserByUserNo(parentNo);
+            BigDecimal parentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.001")).setScale(2,BigDecimal.ROUND_DOWN);
+            log.info("orderNo="+orderNo+",给上级"+parentNo+"分润"+String.valueOf(parentProfitAmount));
+            if(parentProfitAmount.compareTo(new BigDecimal("0.00"))==1){
+                Map<String,Object> profitResultMap = payService.parentProfit(parentNo, orderNo, parentProfitAmount,5);
+                payService.insertOperationLog(parentNo,"profit","user","订单orderNo="+orderNo+"分润结果："+profitResultMap);
+                log.info("分润结果profitResultMap=" + profitResultMap);
+                Boolean resultBoo = (Boolean) profitResultMap.get("success");
+                if(resultBoo){
+                    Map<String,String> profitParamsMap = new HashMap<>();
+                    profitParamsMap.put("first","尊敬的用户：您有一笔分润资金已成功入账。");
+                    profitParamsMap.put("keyword1",String.valueOf(parentProfitAmount)+"元");
+                    profitParamsMap.put("keyword2",sdf.format(new Date()));
+                    profitParamsMap.put("remark","可通过“个人中心”--“余额账单”进行查看");
+                    profitParamsMap.put("descUrl", userInfoUrl);
+                    wxAction.sendWXModelMsg(String.valueOf(parentMap.get("openid")),"VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk",profitParamsMap);
+                    //二级分润
+                    String secondParendNo = String.valueOf(parentMap.get("parent_no"));
+                    if(isNotEmpty(secondParendNo)){
+                        Map<String,Object> secondParentMap = payService.selectUserByUserNo(secondParendNo);
+                        BigDecimal secondParentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.0003")).setScale(2,BigDecimal.ROUND_DOWN);
+                        log.info("orderNo="+orderNo+",给上级的上级"+secondParendNo+"分润"+String.valueOf(secondParentProfitAmount));
+                        if(secondParentProfitAmount.compareTo(new BigDecimal("0.00"))==1) {
+                            Map<String, Object> secondProfitResultMap = payService.parentProfit(secondParendNo, orderNo, secondParentProfitAmount, 6);
+                            payService.insertOperationLog(secondParendNo, "profit", "user", "订单orderNo=" + orderNo + "分润结果：" + secondProfitResultMap);
+                            log.info("二级分润结果secondProfitResultMap=" + secondProfitResultMap);
+                            Boolean secondResultBoo = (Boolean) secondProfitResultMap.get("success");
+                            if (secondResultBoo) {
+                                Map<String, String> secondProfitParamsMap = new HashMap<>();
+                                secondProfitParamsMap.put("first", "尊敬的用户：您有一笔二级分润资金已成功入账。");
+                                secondProfitParamsMap.put("keyword1", String.valueOf(secondParentProfitAmount)+"元");
+                                secondProfitParamsMap.put("keyword2", sdf.format(new Date()));
+                                secondProfitParamsMap.put("remark", "可通过“个人中心”--“余额账单”进行查看");
+                                secondProfitParamsMap.put("descUrl", userInfoUrl);
+                                wxAction.sendWXModelMsg(String.valueOf(secondParentMap.get("openid")), "VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk", secondProfitParamsMap);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     //四元素实名认证

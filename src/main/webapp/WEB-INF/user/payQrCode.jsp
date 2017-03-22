@@ -118,8 +118,8 @@
     </header>
     <div style="text-align: center">
         <p class="page_desc"><img id="imgQr" src="" alt=""></p>
-        <p style="color: #888;margin: 20px 0px;">用微信或支付宝扫描二维码付款或</p>
-        <a href="${url}" class="weui_btn weui_btn_primary" style="margin:14px;">识别二维码,微信支付</a>
+        <p style="color: #888;margin: 20px 0px;">扫描二维码付款或</p>
+        <a href="${url}" class="weui_btn weui_btn_primary" style="margin:14px;">识别二维码</a>
         <c:if test="${empty parentNo || parentNo=='null'}">
             <a href="javascript:saoyisao();" class="weui_btn weui_btn_plain_primary" style="margin:14px;">点此扫描推荐人收款码,费率再降</a>
         </c:if>

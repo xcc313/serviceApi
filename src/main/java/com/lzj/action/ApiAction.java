@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -1039,6 +1041,68 @@ public class ApiAction extends BaseController{
 			outJson(listJsonStr, response);
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+
+	@RequestMapping(value = "sendSmsCode", method = RequestMethod.POST)
+	public void sendSmsCode(final ModelMap model, @RequestParam Map<String, String> params,
+							HttpServletResponse response, HttpServletRequest request){
+		log.info("---------sendSmsCode----------params="+params);
+		Map<String,Object> resultMap = new HashMap<String, Object>();
+		try {
+			String encryptUserNo = params.get("userNo");
+			String userNo = decryptUserNo(encryptUserNo);
+			Map<String,Object> whereMap = new HashMap<String, Object>();
+			whereMap.put("user_no",userNo);
+			Map<String,Object> userMap = apiService.getOneMethod("user", whereMap, "id", "desc", 0);
+			if(userMap==null || userMap.isEmpty()){
+				resultMap.put("success",false);
+				resultMap.put("msg", "无此用户");
+				outJson(JSONObject.toJSONString(resultMap), response);
+				return;
+			}
+			String userStatus = String.valueOf(userMap.get("status"));
+			if("CLOSE".equals(userStatus)){
+				resultMap.put("success",false);
+				resultMap.put("msg", "用户已注销");
+				outJson(JSONObject.toJSONString(resultMap), response);
+				return;
+			}
+			String mobileNo = String.valueOf(userMap.get("mobile_no"));
+			String name = String.valueOf(userMap.get("real_name"));
+			String smsCode = String.valueOf(Math.round(Math.random() * 900000 + 100000));
+			Map<String,String> param = new HashMap<String, String>();
+			param.put("name",name);
+			param.put("code",smsCode);
+			String RecNum = mobileNo;
+			String SignName = "速查服务";
+			String TemplateCode = "SMS_54795084";
+			String smsResponse = SearchNewApiUtil.sendAliSms(JSONObject.toJSONString(param),RecNum,SignName,TemplateCode);
+			//String smsResponse = "{\"success\":true}";
+			log.info("发送注册短信结果，smsResponse=" + smsResponse);
+			Map<String,Object> smsResponseMap = (Map<String,Object>) JSON.parse(smsResponse);
+			Boolean smsResult = (Boolean)smsResponseMap.get("success");
+			if(smsResult){
+				apiService.sendSms(mobileNo,smsCode,String.valueOf(smsResult),"","速查服务-快捷绑定卡");
+				resultMap.put("success", true);
+				resultMap.put("msg", "短信验证码发送成功");
+				outJson(JSONObject.toJSONString(resultMap), response);
+				return;
+			}else{
+				String smsMessage = String.valueOf(smsResponseMap.get("message"));
+				apiService.sendSms(mobileNo, smsCode, String.valueOf(smsResult), smsMessage,"速查服务-快捷绑定卡");
+				resultMap.put("success", false);
+				resultMap.put("msg", "短信验证码发送失败");
+				outJson(JSONObject.toJSONString(resultMap), response);
+				return;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.info(e.getMessage());
+			resultMap.put("success",false);
+			resultMap.put("msg", "系统异常");
+			outJson(JSONObject.toJSONString(resultMap), response);
+			return;
 		}
 	}
 

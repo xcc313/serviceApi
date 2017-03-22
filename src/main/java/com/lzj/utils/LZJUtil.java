@@ -5,8 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.util.*;
 
 import javax.xml.bind.JAXBContext;
@@ -27,6 +26,14 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 
 public class LZJUtil {
+
+	private static final String ACCEPT = "text/html,application/xhtml+xml,application/xml,image/png,image/*;q=0.8,*/*;q=0.5";
+	private static final String ACCEPT_LANGUAGE = "zh-cn,zh;q=0.5";
+	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; rv:8.0) Gecko/20100101 Firefox/8.0";
+	private static final String ACCEPT_CHARSET = "GB2312,utf-8;q=0.7,*;q=0.7";
+	private static final Integer CONNECTION_TIMEOUT = 60000;
+	private static final Integer READ_TIMEOUT = 60000;
+	public static final String ENCODING_UTF8 = "UTF-8";
 	
 	/**
 	 * json型字符串转map
@@ -84,8 +91,11 @@ public class LZJUtil {
 	      try {
 	    	    method = new GetMethod(url);
 	      	 	HttpClient httpclient=new HttpClient();  
-	      	 	httpclient.getHttpConnectionManager().getParams().setConnectionTimeout(20*1000);
-				httpclient.getHttpConnectionManager().getParams().setSoTimeout(20*1000);
+	      	 	httpclient.getHttpConnectionManager().getParams().setConnectionTimeout(60*1000);
+				httpclient.getHttpConnectionManager().getParams().setSoTimeout(60 * 1000);
+			    System.setProperty("sun.net.client.defaultConnectTimeout", String.valueOf(60000));// （单位：毫秒）
+			    System.setProperty("sun.net.client.defaultReadTimeout", String.valueOf(60000)); // （单位：毫秒）
+			    httpclient.getParams().setIntParameter("http.socket.timeout", 60000);
 		        //HttpMethod method = getMethod(url);  
 //		        HttpClient httpClient = new HttpClient();  
 //		        httpClient.getHostConfiguration().setHost(host, 8080, "http");          
@@ -108,7 +118,56 @@ public class LZJUtil {
 				method.releaseConnection();  
 			}  
 	  }
-	  
+
+	public static Map<String, String> getDefHeaders() {
+		Map<String, String> headers = new HashMap<>();
+		headers.put("Accept", ACCEPT);
+		headers.put("Accept-Language", ACCEPT_LANGUAGE);
+		headers.put("User-Agent", USER_AGENT);
+		headers.put("Accept-Charset", ACCEPT_CHARSET);
+		return headers;
+	}
+
+	public static void buildConnection(HttpURLConnection conn, Map<String, String> headers) {
+		conn.setConnectTimeout(CONNECTION_TIMEOUT);// 连接超时 单位毫秒
+		conn.setReadTimeout(READ_TIMEOUT);// 读取超时 单位毫秒
+		conn.setDoOutput(true);
+		conn.setDoInput(true);
+		Set<Map.Entry<String, String>> entries = headers.entrySet();
+		for (Map.Entry<String, String> entry:entries) {
+			String entryValue = String.valueOf(entry.getValue());
+			conn.setRequestProperty(entry.getKey(), entryValue);
+		}
+		/*headers.each {
+			conn.setRequestProperty(it.key, it.value);
+		}*/
+	}
+
+	public static String doGet(String url) throws MalformedURLException, IOException,SocketTimeoutException {
+		String encoding = ENCODING_UTF8;
+		return doGet(url, encoding, getDefHeaders());
+	}
+
+	public static String doGet(String url, String encoding, Map<String, String> headers) throws MalformedURLException, IOException,SocketTimeoutException {
+		System.out.println("doGet,url------>" + url);
+		StringBuilder sb = new StringBuilder();
+		HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+		Set<Map.Entry<String, String>> entries = getDefHeaders().entrySet();
+		for (Map.Entry<String, String> entry:entries) {
+			String entryValue = String.valueOf(entry.getValue());
+			headers.put(entry.getKey(),entryValue);
+		}
+		buildConnection(con, headers);
+
+		BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), encoding));
+		String s = null;
+		while ((s = br.readLine()) != null) {
+			sb.append(s);
+		}
+		con.disconnect();
+		return sb.toString();
+	}
+
 	  /**
 	   * 发送http的post请求,参数为map
 	   * @param url

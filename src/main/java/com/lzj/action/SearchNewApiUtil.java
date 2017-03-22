@@ -1,6 +1,7 @@
 package com.lzj.action;
 
 import com.alibaba.druid.util.StringUtils;
+import com.alibaba.fastjson.JSONObject;
 import com.lzj.utils.HttpUtils;
 import com.lzj.utils.LZJUtil;
 import com.lzj.utils.MD5;
@@ -210,11 +211,47 @@ public class SearchNewApiUtil {
         return EntityUtils.toString(httpResponse.getEntity());
     }
 
-
+    /**
+     * 阿里发送短信
+     * @param ParamString 模板变量，其中数字必须转换为字符串，个人用户每个变量长度必须小于15个字符。例如：短信模板为：“短信验证码${no}”。若参数传递为 {“no”:”123456”}，用户将接收到的短信内容为：【短信签名】短信验证码123456
+     * @param RecNum 目标手机号,多条记录可以英文逗号分隔
+     * @param SignName 签名名称
+     * @param TemplateCode 模板CODE
+     * @return
+     * @throws Exception
+     */
+    public static String sendAliSms(String ParamString,String RecNum,String SignName,String TemplateCode) throws Exception {
+        String host = "http://sms.market.alicloudapi.com";
+        String path = "/singleSendSms";
+        String method = "GET";
+        Map<String, String> headers = new HashMap<String, String>();
+        //最后在header中的格式(中间是英文空格)为Authorization:APPCODE 83359fd73fe94948385f570e3c139105
+        headers.put("Authorization", "APPCODE 64d5f5a2e26f41d4ab18ff7e309d2ac2");
+        Map<String, String> querys = new HashMap<String, String>();
+        querys.put("ParamString", ParamString);
+        querys.put("RecNum", RecNum);
+        querys.put("SignName", SignName);
+        querys.put("TemplateCode", TemplateCode);
+        HttpResponse httpResponse = HttpUtils.doGet(host, path, method, headers, querys);
+        //获取response的body
+        return EntityUtils.toString(httpResponse.getEntity());
+    }
 
     public static void main(String[] args) {
         try{
-            System.out.println(getNewVerifiedResultByYFB("6217995650008296546","431121198809096938","漆玉亮","13357287006"));
+            //System.out.println(getNewVerifiedResultByYFB("6217995650008296546","431121198809096938","漆玉亮","13357287006"));
+            Map<String,String> param = new HashMap<String, String>();
+            param.put("name","卢紫俊");
+            param.put("code","123456");
+            String RecNum = "13662645802";
+            String SignName = "速查服务";
+            String TemplateCode = "SMS_54795084";
+            try {
+                String smsResponse = sendAliSms(JSONObject.toJSONString(param), RecNum, SignName, TemplateCode);
+                System.out.println("smsResponse="+smsResponse);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }catch (Exception e){e.printStackTrace();}
     }
 }

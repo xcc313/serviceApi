@@ -12,6 +12,16 @@
 	<listener>
 		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
 	</listener>
+
+	<!-- captcha servlet config -->
+	<servlet>
+		<servlet-name>CaptchaServlet</servlet-name>
+		<servlet-class>com.lzj.captcha.CaptchaServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>CaptchaServlet</servlet-name>
+		<url-pattern>/servlet/captchaCode</url-pattern>
+	</servlet-mapping>
 	
 	<!-- spring mvc -->
 	<servlet>

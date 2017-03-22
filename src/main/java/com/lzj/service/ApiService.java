@@ -297,14 +297,14 @@ public class ApiService {
 		String searchParentSql = "select * from china_area where name = ? and parentid='0'";
 		Map<String,Object> provinceMap = dao.findFirst(searchParentSql,province);
 		String provinceId = String.valueOf(provinceMap.get("areaid"));
-		log.info("provinceId===="+provinceId);
+		log.info("provinceId====" + provinceId);
 		String searchAreaSql = "select * from china_area where name like ? and parentid=?";
 		Map<String,Object> cityMap = dao.findFirst(searchAreaSql, new Object[]{city, provinceId});
 		String cityId = String.valueOf(cityMap.get("areaid"));
 		log.info("cityId====" + cityId);
 		Map<String,Object> townMap = dao.findFirst(searchAreaSql,new Object[]{town,cityId});
 		String townId = String.valueOf(townMap.get("areaid"));
-		log.info("townId===="+townId);
+		log.info("townId====" + townId);
 		return townId;
 	}
 
@@ -317,7 +317,7 @@ public class ApiService {
 	public List<Map<String,Object>> getZipcodeHistory(String areaid,String searchKey){
 		searchKey = "%"+searchKey+"%";
 		String sql = "select * from zipcode_history where areaid=? and (search_key like ? or address like ?) limit 30";
-		return dao.find(sql,new Object[]{areaid,searchKey,searchKey});
+		return dao.find(sql, new Object[]{areaid, searchKey, searchKey});
 	}
 
 	/**
@@ -397,5 +397,12 @@ public class ApiService {
 		}
 		dao.update(sql,list.toArray());
 	}
+
+	//插入短信发送记录
+	public void sendSms(String mobileNo,String smsCode,String resultStatus,String resultMsg,String source) throws SQLException {
+		String sql = "insert into sms_log(mobile_no,sms_code,create_time,result_status,result_msg,source) values(?,?,?,?,?,?)";
+		dao.insertReturnId(sql, new Object[]{mobileNo, smsCode, new Date(), resultStatus, resultMsg, source});
+	}
+
 
 }

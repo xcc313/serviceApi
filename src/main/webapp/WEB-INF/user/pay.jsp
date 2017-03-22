@@ -70,13 +70,16 @@
             }
 
             function toPay(t){
+                window.location.href = "${ctx}/pay/choosePayWay?userNo=${userNo}&amount="+t+"&scanCodeWay=${scanCodeWay}";
+
+                /*
                 var payConfirm = $(".confirm_pay");
                 $.showLoading("正在加载...");
                 var i = Math.random() * 4;
                 var abc = parseInt(i);
                 $.getJSON("${ctx}/pay/payCreateOrder", {
                     userNo: '${userNo}',
-                    payType: '${payType}',
+                    scanCodeWay: '${scanCodeWay}',
                     amount: t
                 }, function (data) {
                     $.hideLoading();
@@ -86,7 +89,7 @@
                         var success = params.success;
                         var msg = params.msg;
                         if(success){
-                            window.location.href = "${ctx}/pay/toQrcodePay?codeUrl="+msg+"&amount="+t+"&userNo=${userNo}&payType=${payType}";
+                            window.location.href = "${ctx}/pay/toQrcodePay?codeUrl="+msg+"&amount="+t+"&userNo=${userNo}&scanCodeWay=${scanCodeWay}";
                         }else{
                             $.alert(msg)
                         }
@@ -94,6 +97,8 @@
                         $.alert("下单异常，请稍后重试");
                     }
                 })
+                */
+
             }
             $(".table td").on("touchstart", numberClick);
         });

@@ -44,10 +44,10 @@
     </div>
 </div>
 <div style="text-align: center;margin-top: 10px;font-family: 微软雅黑;font-size: 15px;">
-    <c:if test="${payType eq 'wxNative'}">
+    <c:if test="${scanCodeWay eq 'wxNative'}">
         <p style="line-height: 35px;color: #666666;">请使用微信扫码或长按识别二维码付款</p>
     </c:if>
-    <c:if test="${payType eq 'alipay'}">
+    <c:if test="${scanCodeWay eq 'alipay'}">
         <p style="line-height: 35px;">请使用支付宝扫码付款</p>
     </c:if>
     <p style="color: red;line-height: 35px;font-weight: bold;">提示：确认收款方真实性，请勿向陌生人支付。</p>

@@ -92,7 +92,7 @@ public class WeiXinPay {
 	
 	/**
 	 * 拼接
-	 * @param params
+	 * @param map
 	 * @return
 	 */
     public static String paramsAdd(Map<String, Object> map){
