@@ -45,7 +45,7 @@
 </div>
 <div style="text-align: center;margin-top: 10px;font-family: 微软雅黑;font-size: 15px;">
     <c:if test="${scanCodeWay eq 'wxNative'}">
-        <p style="line-height: 35px;color: #666666;">请使用微信扫码或长按识别二维码付款</p>
+        <p style="line-height: 35px;color: #666666;font-weight: bold;">请长按二维码，点击保存图片，打开微信扫一扫选择相册图片识别</p>
     </c:if>
     <c:if test="${scanCodeWay eq 'alipay'}">
         <p style="line-height: 35px;">请使用支付宝扫码付款</p>
