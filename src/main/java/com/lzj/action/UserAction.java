@@ -92,22 +92,7 @@ public class UserAction extends BaseController {
     @RequestMapping(value="/rechargeCoin",method = RequestMethod.GET)
     public String rechargeCoin(final ModelMap model,@RequestParam Map<String, String> params){
         log.info("--------rechargeCoin-----params=" + params);
-        String encryptUserNo = params.get("userNo");
-        String userNo = "";
-        try {
-            userNo = decryptUserNo(encryptUserNo);
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.info("--------风险操作,警告一次，下次关闭商户-----");
-            try {
-                userService.insertOperationLog("", "risk", "user", "userInfo,params=" + params);
-            } catch (SQLException e1) {
-                e1.printStackTrace();
-            }
-            model.put("errorMsg", "风险操作,警告一次，下次关闭商户");
-            model.put("errorCode", "1001");
-            return "errorPage";
-        }
+        String userNo = params.get("userNo");
         try {
             Map<String,Object> whereMap = new HashMap<String, Object>();
             whereMap.put("user_no",userNo);

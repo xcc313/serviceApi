@@ -482,7 +482,7 @@ public class WxAction extends BaseController{
 						userMap = weixinService.selectUserByOpenId(openid);
 					}
 					String userNo = String.valueOf(userMap.get("user_no"));
-					response.sendRedirect("/user/rechargeCoin?userNo=" + encryptUserNo(userNo));
+					response.sendRedirect("/user/rechargeCoin?userNo=" + userNo);
 				}
 			}
 		} catch (Exception e) {
