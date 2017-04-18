@@ -9,6 +9,7 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -105,7 +106,7 @@ public class PayService {
 
     public Map<String,Object> selectUnipayCard(String accountNo,String userNo){
         String sql = "select * from unipay_card where account_no=? and user_no=? and status='0'";
-        return dao.findFirst(sql, new Object[]{accountNo,userNo});
+        return dao.findFirst(sql, new Object[]{accountNo, userNo});
     }
 
     public void insertUnipayCard(String user_no,String account_no) throws SQLException {
@@ -144,7 +145,7 @@ public class PayService {
                     BigDecimal transAmount = new BigDecimal(String.valueOf(payOrderMap.get("trans_amount")));
                     BigDecimal transFee = new BigDecimal(String.valueOf(payOrderMap.get("trans_fee")));
                     BigDecimal rechargeAmount = transAmount.subtract(transFee);
-                    String updateOrderSql = "update pay_order set order_status=?,order_msg=?,trans_status=?,trans_time=? where order_no=?";
+                    String updateOrderSql = "update pay_order set order_status=?,order_msg=?,trans_status=?,trans_time=? where order_no=? and order_status='1' and trans_status='0'";
                     int updateOrderResultRow = dao.updateByTranscation(updateOrderSql,new Object[]{"3","订单支付成功","1",new Date(),orderNo},conn);
                     String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
                     int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql,new Object[]{payOrderMap.get("user_no"),"IN",rechargeAmount,new Date(),1,payOrderMap.get("id")},conn);
@@ -411,5 +412,22 @@ public class PayService {
     public List<Map<String,Object>> selectSendMerchantName(){
         String sql = "select * from send_merchant_name";
         return dao.find(sql);
+    }
+
+    public Map<String,Object> findBlackByTypeAndValue(Integer black_type, String black_value){
+        String sql = " select id, black_type, black_value from risk_black_user where black_type = ? and black_value = ? and black_status = 1 ";
+        return dao.findFirst(sql, new Object[]{black_type, black_value});
+    }
+
+    public List<Map<String,Object>> selectRiskPayOrder(String userNo,BigDecimal amount){
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String todayStr = sdf.format(new Date());
+        String sql = "select * from pay_order where user_no=? and create_time>? and order_status='3' and trans_amount=? order by id desc";
+        return dao.find(sql, new Object[]{userNo, todayStr, String.valueOf(amount)});
+    }
+
+    public void lockUser(String userNo) throws SQLException {
+        String sql = "update user set status='LOCK' where user_no=?";
+        dao.update(sql,userNo);
     }
 }

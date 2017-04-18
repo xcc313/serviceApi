@@ -101,9 +101,26 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
+            Map<String,Object> updateMap = new HashMap<>();
+            Map<String,Object> riskBlackMer = new HashMap<>();
+            riskBlackMer = payService.findBlackByTypeAndValue(0, bankcard);
+            if(riskBlackMer!=null && !riskBlackMer.isEmpty()){
+                log.info("该银行卡"+ bankcard +"在黑名单之列");
+                updateMap.put("status","LOCK");
+            }
+            riskBlackMer = payService.findBlackByTypeAndValue(1, idcard);
+            if(riskBlackMer!=null && !riskBlackMer.isEmpty()){
+                log.info("该身份证"+ idcard +"在黑名单之列");
+                updateMap.put("status", "LOCK");
+            }
+            riskBlackMer = payService.findBlackByTypeAndValue(2, mobileNo);
+            if(riskBlackMer!=null && !riskBlackMer.isEmpty()){
+                log.info("该手机号"+ mobileNo +"在黑名单之列");
+                updateMap.put("status", "LOCK");
+            }
             Map<String,Object> updateWhereMap = new HashMap<>();
             updateWhereMap.put("user_no",userNo);
-            Map<String,Object> updateMap = new HashMap<>();
+            //更新信息
             updateMap.put("mobile_no",mobileNo);
             updateMap.put("merchant_name",merchantName);
             updateMap.put("id_card_no",idcard);
@@ -813,6 +830,7 @@ public class PayAction extends BaseController {
                 outJson(JSONObject.toJSONString(resultMap), response);
                 return;
             }
+            tradeRiskCon(userNo,new BigDecimal(amount));
             Map<String,Object> compAmountResultMap = compAmountLimit("trade",userNo,new BigDecimal(amount));
             Boolean compAmountResultStatus = (Boolean)compAmountResultMap.get("resultStatus");
             String compAmountResultMsg = String.valueOf(compAmountResultMap.get("resultMsg"));
@@ -1042,7 +1060,7 @@ public class PayAction extends BaseController {
                 String bizName = headMap.get("biz_name");
                 String resultCode = headMap.get("result_code");
                 if("transfer".equals(bizName)){
-                    if("SEND".equals(resultCode)){
+                    if("SEND".equals(resultCode) || "SUCCESS".equals(resultCode)){
                         String order_no = contentMap.get("order_no");
                         if(orderNo.equals(order_no)){
                             payService.updatePurseOrder("1", "提交上游成功", "0", orderNo);
@@ -1052,9 +1070,12 @@ public class PayAction extends BaseController {
                             return;
                         }
                     }else{
+                        if("FAIL".equals(resultCode)){
+                            log.info("冲正");
+                            payService.returnExtraction(orderNo,"提现提交上游失败");
+                        }
                         String resultMsg = headMap.get("result_msg");
                         payService.updatePurseOrder("2", resultMsg, null, orderNo);
-                        payService.returnExtraction(orderNo,"提现提交上游失败");
                         resultMap.put("success", false);
                         resultMap.put("msg", resultMsg);
                         outJson(JSONObject.toJSONString(resultMap), response);
@@ -1093,7 +1114,7 @@ public class PayAction extends BaseController {
             return "user/fastPay";
         }catch (Exception e){
             e.printStackTrace();
-            model.put("errorMsg","交易失败");
+            model.put("errorMsg", "交易失败");
             model.put("errorCode", "123123123123");
             return "errorPage";
         }
@@ -1504,6 +1525,22 @@ public class PayAction extends BaseController {
             resultMap.put("resultStatus",false);
             resultMap.put("resultMsg", "系统异常");
             return resultMap;
+        }
+
+    }
+
+    public void tradeRiskCon(String userNo,BigDecimal amount){
+        log.info("交易风险处理,userNo=" + userNo + ",amount=" + amount);
+        try{
+            //Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
+            List<Map<String,Object>> riskPayOrderList = payService.selectRiskPayOrder(userNo,amount);
+            if(riskPayOrderList!=null && !riskPayOrderList.isEmpty() && riskPayOrderList.size()>=2){
+                log.info("今日相同的交易有多笔，锁定用户");
+                payService.lockUser(userNo);
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+            log.info(e.getMessage());
         }
 
     }
