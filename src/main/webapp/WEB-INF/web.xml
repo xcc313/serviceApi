@@ -12,6 +12,9 @@
 	<listener>
 		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
 	</listener>
+	<listener>
+		<listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
+	</listener>
 
 	<!-- captcha servlet config -->
 	<servlet>
@@ -41,6 +44,20 @@
 		<servlet-name>mvc</servlet-name>
 		<url-pattern>/website/main</url-pattern>
 	</servlet-mapping>
+
+	<!-- Shiro Security filter -->
+	<filter>
+		<filter-name>shiroFilter</filter-name>
+		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+		<init-param>
+			<param-name>targetFilterLifecycle</param-name>
+			<param-value>true</param-value>
+		</init-param>
+	</filter>
+	<filter-mapping>
+		<filter-name>shiroFilter</filter-name>
+		<url-pattern>/manage/*</url-pattern>
+	</filter-mapping>
 
 	<!--<welcome-file-list>
 		<welcome-file>website/main</welcome-file>

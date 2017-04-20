@@ -15,6 +15,7 @@
 	<!-- 导入数据库配置 -->
 	<import resource="classpath:dbcp.xml" />
 	<context:property-placeholder location="classpath:dbcp.properties" />
+	<import resource="classpath:shiro.xml" />
 
 	<!-- 引入同文件夹下的redis属性配置文件 -->
 	<!--<import resource="redis.xml"/>-->

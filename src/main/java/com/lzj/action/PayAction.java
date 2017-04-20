@@ -1071,8 +1071,19 @@ public class PayAction extends BaseController {
                         }
                     }else{
                         if("FAIL".equals(resultCode)){
-                            log.info("冲正");
-                            payService.returnExtraction(orderNo,"提现提交上游失败");
+                            log.info("冲正,待审核");
+                            //payService.returnExtraction(orderNo,"提现提交上游失败");
+                            Map<String,Object> insertReturnExtractionResultMap = payService.insertRetuanExtraction(orderNo);
+                            log.info("insertReturnExtractionResultMap="+insertReturnExtractionResultMap);
+                            Map<String,String> modelMap = new HashMap<>();
+                            modelMap.put("first","有一笔冲正等待您的审核");
+                            modelMap.put("keyword1", "冲正");
+                            modelMap.put("keyword2","待审核");
+                            modelMap.put("keyword3","提现订单编号："+orderNo);
+                            modelMap.put("remark","请尽快处理");
+                            String weixinUrl = payService.getParamValue("weixinUrl");
+                            modelMap.put("descUrl",weixinUrl+"/manage/login");
+                            wxAction.sendWXModelMsg("ojrBPxGMZOnnQzZM8-8ER2-gPi88", "JnFiGYhw6xgEa8lA-ViYoCrUb5QSwxpFXIXQIpWI7o0", modelMap);
                         }
                         String resultMsg = headMap.get("result_msg");
                         payService.updatePurseOrder("2", resultMsg, null, orderNo);
@@ -1261,7 +1272,18 @@ public class PayAction extends BaseController {
                         payService.updatePurseOrder("3", "提现成功", "1",new Date(), orderNo);
                     }else if("FAIL".equals(resultCode)){
                         payService.updatePurseOrder("3", resultMsg, "2", orderNo);
-                        payService.returnExtraction(orderNo,"提现回调，提现失败");
+                        //payService.returnExtraction(orderNo,"提现回调，提现失败");
+                        Map<String,Object> insertReturnExtractionResultMap = payService.insertRetuanExtraction(orderNo);
+                        log.info("insertReturnExtractionResultMap=" + insertReturnExtractionResultMap);
+                        Map<String,String> modelMap = new HashMap<>();
+                        modelMap.put("first","有一笔冲正等待您的审核");
+                        modelMap.put("keyword1", "冲正");
+                        modelMap.put("keyword2","待审核");
+                        modelMap.put("keyword3", "提现订单编号：" + orderNo);
+                        modelMap.put("remark","请尽快处理");
+                        String weixinUrl = payService.getParamValue("weixinUrl");
+                        modelMap.put("descUrl",weixinUrl+"/manage/login");
+                        wxAction.sendWXModelMsg("ojrBPxGMZOnnQzZM8-8ER2-gPi88", "JnFiGYhw6xgEa8lA-ViYoCrUb5QSwxpFXIXQIpWI7o0", modelMap);
                     }else{
                         payService.updatePurseOrder("3", resultMsg, "3", orderNo);
                     }

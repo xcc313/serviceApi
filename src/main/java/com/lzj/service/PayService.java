@@ -91,7 +91,7 @@ public class PayService {
 
     public List<Map<String,Object>> selectFastpayCardByUserNo(String userNo){
         String sql = "select * from fastpay_card where user_no=?";
-        return dao.find(sql,userNo);
+        return dao.find(sql, userNo);
     }
 
     public Map<String,Object> selectFastpayCardById(String id){
@@ -252,7 +252,7 @@ public class PayService {
         try {
             conn.setAutoCommit(false);
             String searchOrderSql = "select * from pay_order where order_no=? for update";
-            Map<String,Object> payOrderMap = dao.findFirst(searchOrderSql,orderNo);
+            Map<String,Object> payOrderMap = dao.findFirst(searchOrderSql, orderNo);
             if(payOrderMap==null || payOrderMap.isEmpty()){
                 log.info("无此订单,orderNo="+orderNo);
                 profitResultMap.put("success",false);
@@ -304,7 +304,67 @@ public class PayService {
         return profitResultMap;
     }
 
+    /**
+     * 写入待审核冲正信息
+     * @param orderNo
+     * @return
+     */
+    public Map<String,Object> insertRetuanExtraction(String orderNo){
+        Map<String,Object> insertReturnExtractionResultMap = new HashMap<>();
+        Connection conn = dao.getConnection();
+        try {
+            conn.setAutoCommit(false);
+            String updatePurseSql = "update purse_cash set is_back='1' where order_no=?";
+            int updatePurseRow = dao.updateByTranscation(updatePurseSql, new Object[]{orderNo}, conn);
+            String searchOrderSql = "select * from purse_cash where order_no=?";
+            Map<String,Object> purseOrderMap = dao.findFirst(searchOrderSql, orderNo);
+            String cashId = String.valueOf(purseOrderMap.get("id"));
+            String userNo = String.valueOf(purseOrderMap.get("user_no"));
+            String amount = String.valueOf(purseOrderMap.get("amount"));
+            String insertReturnExtractionSql = "insert into return_extraction(user_no,cash_order_no,cash_id,amount,create_time) values(?,?,?,?,?)";
+            int insertReturnExtractionRow = dao.updateByTranscation(insertReturnExtractionSql, new Object[]{userNo, orderNo, cashId,amount, new Date()}, conn);
+            log.info("orderNo:{},insertRetuanExtraction,sql结果，updatePurseRow:{},insertReturnExtractionRow:{}",new Object[]{orderNo,updatePurseRow,insertReturnExtractionRow});
+            if(updatePurseRow==1 && insertReturnExtractionRow==1){
+                log.info("写入冲正信息sql提交,orderNo="+orderNo);
+                conn.commit();
+                insertReturnExtractionResultMap.put("success", true);
+                insertReturnExtractionResultMap.put("msg", "写入冲正成功");
+                return insertReturnExtractionResultMap;
+            }else{
+                log.info("写入冲正信息sql回滚,orderNo="+orderNo);
+                conn.rollback();
+                insertReturnExtractionResultMap.put("success", false);
+                insertReturnExtractionResultMap.put("msg", "写入冲正失败");
+                return insertReturnExtractionResultMap;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                log.info("写入冲正sql回滚,orderNo="+orderNo);
+                conn.rollback();
+                insertReturnExtractionResultMap.put("success", false);
+                insertReturnExtractionResultMap.put("msg", "写入冲正异常");
+                return insertReturnExtractionResultMap;
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return insertReturnExtractionResultMap;
+    }
 
+
+    /**
+     * 不审核直接冲正
+     * @param orderNo
+     * @param backRemark
+     * @return
+     */
     public Map<String,Object> returnExtraction(String orderNo,String backRemark){
         Map<String,Object> extractionResultMap = new HashMap<>();
         Connection conn = dao.getConnection();
@@ -380,18 +440,30 @@ public class PayService {
             String sql = "select order_no,case when trans_status='0' then '交易中' when trans_status='1' then '交易成功' when trans_status='2' then '交易失败' when trans_status='3' then '交易未知' end trans_status from pay_order where id=?";
             return dao.findFirst(sql,channelId);
         }else if("2".equals(channel)){
-            String sql = "select order_no,case when cash_status='0' then '提现中' when cash_status='1' then '提现成功' when cash_status='2' then '提现失败' when cash_status='3' then '提现未知' end trans_status from purse_cash where id=?";
-            return dao.findFirst(sql,channelId);
+            String sql = "select order_no,case when cash_status is null then '未知' when cash_status='0' then '提现中' when cash_status='1' then '提现成功' when cash_status='2' then '提现失败' when cash_status='3' then '提现未知' end trans_status,order_status,order_msg from purse_cash where id=?";
+            Map<String,Object> map = dao.findFirst(sql,channelId);
+            String trans_status = String.valueOf(map.get("trans_status"));
+            String order_status = String.valueOf(map.get("order_status"));
+            if("未知".equals(trans_status) && "2".equals(order_status)){
+                map.put("trans_status",map.get("order_msg"));
+            }
+            return map;
         }else if("3".equals(channel)){
             String sql = "select order_no,case when back_status='0' then '未冲正' when back_status='1' then '冲正成功' when back_status='2' then '冲正失败' when back_status='3' then '冲正未知' end trans_status from purse_cash where id=?";
             return dao.findFirst(sql,channelId);
         }else if("4".equals(channel)){
-            return null;
+            Map<String,Object> map = new HashMap<>();
+            map.put("order_no","调账");
+            map.put("trans_status","调账成功");
+            return map;
         }else if("5".equals(channel)){
             String sql = "select order_no,'分润成功' as trans_status from pay_order where id=?";
             return dao.findFirst(sql,channelId);
         }else if("6".equals(channel)){
             String sql = "select order_no,'二级分润成功' as trans_status from pay_order where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("7".equals(channel)){
+            String sql = "select cash_order_no as order_no,case when check_status='0' then '冲正未审核' when check_status='1' then '冲正成功' when check_status='2' then '冲正审核不通过' end trans_status from return_extraction where id=?";
             return dao.findFirst(sql,channelId);
         }else{
             return null;

@@ -239,6 +239,12 @@
 		    <artifactId>logback-access</artifactId>
 		    <version>0.9.29</version>
 		</dependency> -->
+
+		<dependency>
+			<groupId>org.apache.shiro</groupId>
+			<artifactId>shiro-spring</artifactId>
+			<version>1.2.0</version>
+		</dependency>
 		
 		<!-- jstl -->
 	    <dependency>
