@@ -13,10 +13,11 @@ public class CreateMeau {
         OutputStream os=null;
         InputStream is=null;
         try {
-            String access_token = "jiexxa5YcmO5mvVJ34Dg1J6AuTe3v3cVnZIy0lviD8chEWQtSL-9I8Ey3eUC4FavWo93dwcO6c9lBjWX0iza8lunex4gHx308iZx-R8y_FpE73lU3txF4v77T5BFqeooNIJiADAVQR";
+            String access_token = "xKq_eRnqa_BOzBRihBa7a3oJ-Goeqb2akJ_-BRVJ8fesCYrewj1NolebFCsPCiEmIgvyk0UBG8qIV5nXCnBX1Of4F_qhEXPYAu1JryU-unju280mmSwhPKZ5RG8JER8IHSMgAIATEY";
             String appId = "wx4ee57072d531b1a9";
             //String weixinUrl = "http://www.fcheck.cn";
-            String weixinUrl = "http://www.qrcodevip.com";
+            //String weixinUrl = "http://www.qrcodevip.com";
+            String weixinUrl = "http://fcheck.luyaoli.cn";
 
             URL url2=new URL("https://api.weixin.qq.com/cgi-bin/menu/create?access_token="+access_token);
             HttpURLConnection huc=(HttpURLConnection) url2.openConnection();
