@@ -642,21 +642,21 @@ public class PayAction extends BaseController {
                 model.put("errorCode", "toPay" + encryptUserNo);
                 return "errorPage";
             }
-            if("wxNative".equals(scanCodeWay)){
-                String AppID = payService.getParamValue("AppID");
-                String weixinUrl = payService.getParamValue("weixinUrl");
-                String now = String.valueOf(System.currentTimeMillis());
-                Map<String,String> map = new HashMap<>();
-                map.put("noncestr","Wm3WZYTPz0wzccnW");
-                map.put("jsapi_ticket",wxAction.getJsapiTicket());
-                map.put("timestamp",now);
-                map.put("url",weixinUrl+"/pay/toQrcodePay?codeUrl="+codeUrl+"&amount="+amount+"&userNo="+encryptUserNo+"&scanCodeWay="+scanCodeWay);
-                String sign = String.valueOf(SignUtil.jsSign(map));
-                model.addAttribute("appId", AppID);
-                model.addAttribute("timestamp", now);
-                model.addAttribute("noncestr", "Wm3WZYTPz0wzccnW");
-                model.addAttribute("sign", sign);
-            }
+            String AppID = payService.getParamValue("AppID");
+            String weixinUrl = payService.getParamValue("weixinUrl");
+            String now = String.valueOf(System.currentTimeMillis());
+            Map<String,String> map = new HashMap<>();
+            map.put("noncestr","Wm3WZYTPz0wzccnW");
+            map.put("jsapi_ticket",wxAction.getJsapiTicket());
+            map.put("timestamp",now);
+            map.put("url",weixinUrl+"/pay/toQrcodePay?codeUrl="+codeUrl+"&amount="+amount+"&userNo="+encryptUserNo+"&scanCodeWay="+scanCodeWay);
+            String sign = String.valueOf(SignUtil.jsSign(map));
+            model.addAttribute("appId", AppID);
+            model.addAttribute("timestamp", now);
+            model.addAttribute("noncestr", "Wm3WZYTPz0wzccnW");
+            model.addAttribute("sign", sign);
+
+
             model.put("scanCodeWay",scanCodeWay);
             model.put("codeUrl", codeUrl);
             model.put("amount", amount);
