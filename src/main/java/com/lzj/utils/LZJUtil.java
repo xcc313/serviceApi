@@ -31,8 +31,8 @@ public class LZJUtil {
 	private static final String ACCEPT_LANGUAGE = "zh-cn,zh;q=0.5";
 	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; rv:8.0) Gecko/20100101 Firefox/8.0";
 	private static final String ACCEPT_CHARSET = "GB2312,utf-8;q=0.7,*;q=0.7";
-	private static final Integer CONNECTION_TIMEOUT = 60000;
-	private static final Integer READ_TIMEOUT = 60000;
+	private static final Integer CONNECTION_TIMEOUT = 3000;
+	private static final Integer READ_TIMEOUT = 5000;
 	public static final String ENCODING_UTF8 = "UTF-8";
 	
 	/**

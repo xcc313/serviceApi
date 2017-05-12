@@ -597,6 +597,13 @@ public class PayAction extends BaseController {
                 model.put("errorCode", "choosePayWay" + encryptUserNo);
                 return "errorPage";
             }
+            String payActionSwitch = payService.getParamValue("payActionSwitch");
+            if("1".equals(payActionSwitch)){
+                String payActionCloseNote = payService.getParamValue("payActionCloseNote");
+                model.put("errorMsg", payActionCloseNote);
+                model.put("errorCode", "10000001");
+                return "errorPage";
+            }
             List<Map<String,Object>> unipayCardList = payService.selectUnipayCard(userNo);
             if(unipayCardList!=null && !unipayCardList.isEmpty()){
                 model.put("unipayCardListSize", unipayCardList.size());
