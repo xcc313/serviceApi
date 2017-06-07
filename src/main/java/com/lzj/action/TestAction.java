@@ -7,6 +7,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.lzj.op.WeiXinPayOrder;
 import com.lzj.redis.RedisCallback;
+import com.lzj.redis.RedisClientTemplate;
 import com.lzj.redis.RedisDao;
 import com.lzj.service.ApiService;
 import com.lzj.service.UserService;
@@ -17,6 +18,8 @@ import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -495,6 +498,22 @@ public class TestAction  extends BaseController {
 
     public static void main(String[] args) {
         countPercent(1,10);
+        //test1();
+        //test2("test");
+    }
+
+    public static void test1(){
+        ApplicationContext ac = new ClassPathXmlApplicationContext("classpath:/applicationContent.xml");
+        RedisClientTemplate redisClientTemplate = (RedisClientTemplate)ac.getBean("redisClientTemplate");
+        String result = redisClientTemplate.set("test","lzj");
+        System.out.println(result);
+    }
+
+    public static void test2(String key){
+        ApplicationContext ac = new ClassPathXmlApplicationContext("classpath:/applicationContent.xml");
+        RedisClientTemplate redisClientTemplate = (RedisClientTemplate)ac.getBean("redisClientTemplate");
+        String value = redisClientTemplate.get(key);
+        System.out.println(value);
     }
 
 }

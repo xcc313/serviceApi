@@ -5,7 +5,8 @@ package com.lzj.fc_pay.wofu;
  */
 public class WoFuConfig {
     //public static String TRANS_URL = "http://api.wowpay.cn/pay/receive";
-    public static String TRANS_URL = "http://api.wuka8.com/pay/receive";//2017-05-12更改
+    //public static String TRANS_URL = "http://api.wuka8.com/pay/receive";//2017-05-12更改
+    public static String TRANS_URL = "https://gateway.wowpay.cn/pay/receive"; //2017-05-23更改
     //public static String TRANS_URL = "http://apitest.wowpay.cn/pay/receive";
 
     public static String APP_KEY = "abaca101";

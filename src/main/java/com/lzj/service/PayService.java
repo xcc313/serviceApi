@@ -245,7 +245,7 @@ public class PayService {
         return extractionResultMap;
     }
 
-    //分润  channel：5为一级分润  6为二级分润
+    //分润  channel：5为一级分润  6为二级分润  8为三级分润
     public Map<String,Object> parentProfit(String parentNo,String orderNo,BigDecimal parentProfitAmount,int channel){
         Map<String,Object> profitResultMap = new HashMap<>();
         Connection conn = dao.getConnection();
@@ -302,6 +302,51 @@ public class PayService {
             }
         }
         return profitResultMap;
+    }
+
+    //额外奖励 channel: 9鼓励金(encourage)
+    public Map<String,Object> extraReward(String userNo,BigDecimal rewardAmount,int channel,int channelId){
+        Map<String,Object> extraRewardResultMap = new HashMap<>();
+        Connection conn = dao.getConnection();
+        try {
+            conn.setAutoCommit(false);
+            String insertBalanceHistorySql = "insert into balance_history(user_no,method,amount,create_time,channel,channel_id) values(?,?,?,?,?,?)";
+            int insertResultRow = dao.updateByTranscation(insertBalanceHistorySql, new Object[]{userNo, "IN", rewardAmount, new Date(), channel, channelId}, conn);
+            String addBalanceSql = "update user set balance=balance+? where user_no=?";
+            int updateResultRow = dao.updateByTranscation(addBalanceSql, new Object[]{rewardAmount, userNo}, conn);
+            log.info("channel:{},channelId:{},extraReward,sql结果，insertResultRow:{},updateResultRow:{}",new Object[]{channel,channelId,insertResultRow,updateResultRow});
+            if(insertResultRow==1 && updateResultRow==1){
+                log.info("额外奖励sql提交,channel="+channel);
+                conn.commit();
+                extraRewardResultMap.put("success", true);
+                extraRewardResultMap.put("msg", "额外奖励成功");
+                return extraRewardResultMap;
+            }else{
+                log.info("额外奖励sql回滚,channel="+channel);
+                conn.rollback();
+                extraRewardResultMap.put("success", false);
+                extraRewardResultMap.put("msg", "额外奖励失败");
+                return extraRewardResultMap;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                log.info("提现sql回滚,channel="+channel);
+                conn.rollback();
+                extraRewardResultMap.put("success", false);
+                extraRewardResultMap.put("msg", "额外奖励异常");
+                return extraRewardResultMap;
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return extraRewardResultMap;
     }
 
     /**
@@ -465,6 +510,14 @@ public class PayService {
         }else if("7".equals(channel)){
             String sql = "select cash_order_no as order_no,case when check_status='0' then '冲正未审核' when check_status='1' then '冲正成功' when check_status='2' then '冲正审核不通过' end trans_status from return_extraction where id=?";
             return dao.findFirst(sql,channelId);
+        }else if("8".equals(channel)){
+            String sql = "select order_no,'三级分润成功' as trans_status from pay_order where id=?";
+            return dao.findFirst(sql,channelId);
+        }else if("9".equals(channel)){
+            Map<String,Object> map = new HashMap<>();
+            map.put("order_no","推荐鼓励金");
+            map.put("trans_status","成功");
+            return map;
         }else{
             return null;
         }

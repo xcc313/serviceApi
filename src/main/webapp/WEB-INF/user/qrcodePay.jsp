@@ -93,7 +93,8 @@
 </div>
 <div style="text-align: center;margin-top: 10px;font-family: 微软雅黑;font-size: 15px;">
     <c:if test="${scanCodeWay eq 'wxNative'}">
-        <p style="line-height: 35px;color: #666666;font-weight: bold;">请长按二维码，点击保存图片，打开微信扫一扫选择相册图片识别</p>
+        <%--<p style="line-height: 35px;color: #666666;font-weight: bold;">请长按二维码，点击保存图片，打开微信扫一扫选择相册图片识别</p>--%>
+        <p style="line-height: 35px;color: #666666;font-weight: bold;">由于微信对从相册选择二维码功能做了限制，请先保存二维码然后发送到您另外的手机或者电脑上，然后打开微信扫一扫支付</p>
         <a href="javascript:saoyisao();" class="weui_btn weui_btn_primary" style="margin:14px;">点此快速打开扫一扫</a>
     </c:if>
     <c:if test="${scanCodeWay eq 'alipay'}">

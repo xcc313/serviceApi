@@ -123,6 +123,14 @@
         </div>
         <div class="weui_cell">
             <div class="weui_cell_bd weui_cell_primary">
+                <p>交易手续费(银联卡)</p>
+            </div>
+            <div class="weui_cell_ft">
+                <p>${userMap.fastpay_trans_fee_rate}%</p>
+            </div>
+        </div>
+        <div class="weui_cell">
+            <div class="weui_cell_bd weui_cell_primary">
                 <p>提现手续费</p>
             </div>
             <div class="weui_cell_ft">

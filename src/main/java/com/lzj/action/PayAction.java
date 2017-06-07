@@ -249,11 +249,23 @@ public class PayAction extends BaseController {
                 return;
             }
             String parentParentNo = String.valueOf(parentMap.get("parent_no"));
-            if(userNo.equals(parentParentNo)){
-                resultMap.put("success",false);
-                resultMap.put("msg", "下级不能成为上级");
-                outJson(JSONObject.toJSONString(resultMap), response);
-                return;
+            if(isNotEmpty(parentParentNo)){
+                if(userNo.equals(parentParentNo)){
+                    resultMap.put("success",false);
+                    resultMap.put("msg", "下级不能成为上级");
+                    outJson(JSONObject.toJSONString(resultMap), response);
+                    return;
+                }
+                Map<String,Object> parentParentMap = payService.selectUserByUserNo(parentParentNo);
+                if(parentParentMap!=null && !parentParentMap.isEmpty()){
+                    String pppNo = String.valueOf(parentParentMap.get("parent_no"));
+                    if(isNotEmpty(pppNo) && userNo.equals(pppNo)){
+                        resultMap.put("success",false);
+                        resultMap.put("msg", "下级不能成为上级");
+                        outJson(JSONObject.toJSONString(resultMap), response);
+                        return;
+                    }
+                }
             }
             Map<String,Object> updateWhereMap = new HashMap<>();
             updateWhereMap.put("user_no",userNo);
@@ -263,6 +275,29 @@ public class PayAction extends BaseController {
             int resultRow = apiService.updateMethod("user", updateMap, updateWhereMap);
             payService.insertOperationLog(userNo,"bandParent","user","绑定上级编号"+parentNo+",交易费率改为0.0047");
             if(resultRow==1){
+                //给上级鼓励金
+                String encourageSwitch = payService.getParamValue("encourageSwitch");//推荐鼓励金开关 0开启  1关闭
+                if("0".equals(encourageSwitch)){
+                    BigDecimal extraRewardAmount = new BigDecimal(payService.getParamValue("encourageAmount"));
+                    Map<String, Object> extraRewardResultMap = payService.extraReward(parentNo, extraRewardAmount, 9, Integer.parseInt(String.valueOf(userMap.get("id"))));
+                    payService.insertOperationLog(parentNo, "extraReward", "user", "推荐" + userNo + "获得鼓励金1元，结果：" + extraRewardResultMap);
+                    log.info("获得鼓励金结果extraRewardResultMap=" + extraRewardResultMap);
+                    Boolean extraRewardResultBoo = (Boolean) extraRewardResultMap.get("success");
+                    if (extraRewardResultBoo) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String appId = payService.getParamValue("AppID");
+                        String weixinUrl = payService.getParamValue("weixinUrl");
+                        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do","UTF-8");
+                        String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
+                        Map<String, String> extraRewardParamsMap = new HashMap<>();
+                        extraRewardParamsMap.put("first", "尊敬的用户：您有一笔推荐鼓励金已成功入账。");
+                        extraRewardParamsMap.put("keyword1", String.valueOf(extraRewardAmount)+"元");
+                        extraRewardParamsMap.put("keyword2", sdf.format(new Date()));
+                        extraRewardParamsMap.put("remark", "可通过“个人中心”--“余额账单”进行查看");
+                        extraRewardParamsMap.put("descUrl", userInfoUrl);
+                        wxAction.sendWXModelMsg(String.valueOf(parentMap.get("openid")), "VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk", extraRewardParamsMap);
+                    }
+                }
                 resultMap.put("success",true);
                 resultMap.put("msg", "绑定成功,费率降为0.47%");
                 outJson(JSONObject.toJSONString(resultMap), response);
@@ -434,14 +469,17 @@ public class PayAction extends BaseController {
                 return "errorPage";
             }
             String wx_trans_fee_rate = String.valueOf(userMap.get("wx_trans_fee_rate"));
+            String fastpay_trans_fee_rate = String.valueOf(userMap.get("fastpay_trans_fee_rate"));
             idCard = idCard.substring(0,6)+"******"+idCard.substring(idCard.length()-4);
             accountNo = accountNo.substring(0,6)+"******"+accountNo.substring(accountNo.length()-4);
             mobileNo = mobileNo.substring(0,3)+"****"+mobileNo.substring(mobileNo.length()-4);
             BigDecimal transFeeRate = new BigDecimal(wx_trans_fee_rate).multiply(new BigDecimal("100")).setScale(2);
+            BigDecimal fastTransFeeRate = new BigDecimal(fastpay_trans_fee_rate).multiply(new BigDecimal("100")).setScale(2);
             userMap.put("mobile_no",mobileNo);
             userMap.put("id_card_no",idCard);
             userMap.put("bank_no",accountNo);
             userMap.put("wx_trans_fee_rate",transFeeRate);
+            userMap.put("fastpay_trans_fee_rate",fastTransFeeRate);
             model.put("userMap", userMap);
             model.put("encryptUserNo", encryptUserNo);
             return "user/merchantEdit";
@@ -1207,70 +1245,8 @@ public class PayAction extends BaseController {
                     log.info("更新订单信息,orderNo="+orderNo);
                     if("SUCCESS".equals(resultCode)){
                         payService.recharge(orderNo);
-                        collbackModelMsg(orderNo);
-                        /*//发送收款成功模板消息
-                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                        String appId = payService.getParamValue("AppID");
-                        String weixinUrl = payService.getParamValue("weixinUrl");
-                        String redirect_uri = java.net.URLEncoder.encode(weixinUrl+"/wx/auth.do","UTF-8");
-                        String userInfoUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid="+appId+"&redirect_uri="+redirect_uri+"&response_type=code&scope=snsapi_base&state=userInfo&connect_redirect=1#wechat_redirect";
-                        String transAmount = String.valueOf(orderMap.get("trans_amount"));
-                        String userNo = String.valueOf(orderMap.get("user_no"));
-                        Map<String,Object> userMap = payService.selectUserByUserNo(userNo);
-                        String openid = String.valueOf(userMap.get("openid"));
-                        String merchantName = String.valueOf(userMap.get("merchant_name"));
-                        Map<String,String> paramsMap = new HashMap<>();
-                        paramsMap.put("first","恭喜您有一笔收款到账");
-                        paramsMap.put("keyword1",merchantName);
-                        paramsMap.put("keyword2",transAmount+"元");
-                        paramsMap.put("keyword3",sdf.format(new Date()));
-                        paramsMap.put("remark","点击“个人中心”--“余额”可进行提现");
-                        paramsMap.put("descUrl",userInfoUrl);
-                        wxAction.sendWXModelMsg(openid,"Oce0qp_QYtfpVy0o4kr-ZboGmtd1gmgdlR46Pyzqoac",paramsMap);
-                        //上级分润
-                        String parentNo = String.valueOf(userMap.get("parent_no"));
-                        if(isNotEmpty(parentNo)){
-                            Map<String,Object> parentMap = payService.selectUserByUserNo(parentNo);
-                            BigDecimal parentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.001")).setScale(2,BigDecimal.ROUND_DOWN);
-                            log.info("orderNo="+orderNo+",给上级"+parentNo+"分润"+String.valueOf(parentProfitAmount));
-                            if(parentProfitAmount.compareTo(new BigDecimal("0.00"))==1){
-                                Map<String,Object> profitResultMap = payService.parentProfit(parentNo, orderNo, parentProfitAmount,5);
-                                payService.insertOperationLog(parentNo,"profit","user","订单orderNo="+orderNo+"分润结果："+profitResultMap);
-                                log.info("分润结果profitResultMap=" + profitResultMap);
-                                Boolean resultBoo = (Boolean) profitResultMap.get("success");
-                                if(resultBoo){
-                                    Map<String,String> profitParamsMap = new HashMap<>();
-                                    profitParamsMap.put("first","尊敬的用户：您有一笔分润资金已成功入账。");
-                                    profitParamsMap.put("keyword1",String.valueOf(parentProfitAmount)+"元");
-                                    profitParamsMap.put("keyword2",sdf.format(new Date()));
-                                    profitParamsMap.put("remark","可通过“个人中心”--“余额账单”进行查看");
-                                    profitParamsMap.put("descUrl", userInfoUrl);
-                                    wxAction.sendWXModelMsg(String.valueOf(parentMap.get("openid")),"VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk",profitParamsMap);
-                                    //二级分润
-                                    String secondParendNo = String.valueOf(parentMap.get("parent_no"));
-                                    if(isNotEmpty(secondParendNo)){
-                                        Map<String,Object> secondParentMap = payService.selectUserByUserNo(secondParendNo);
-                                        BigDecimal secondParentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.0003")).setScale(2,BigDecimal.ROUND_DOWN);
-                                        log.info("orderNo="+orderNo+",给上级的上级"+secondParendNo+"分润"+String.valueOf(secondParentProfitAmount));
-                                        if(secondParentProfitAmount.compareTo(new BigDecimal("0.00"))==1) {
-                                            Map<String, Object> secondProfitResultMap = payService.parentProfit(secondParendNo, orderNo, secondParentProfitAmount, 6);
-                                            payService.insertOperationLog(secondParendNo, "profit", "user", "订单orderNo=" + orderNo + "分润结果：" + secondProfitResultMap);
-                                            log.info("二级分润结果secondProfitResultMap=" + secondProfitResultMap);
-                                            Boolean secondResultBoo = (Boolean) secondProfitResultMap.get("success");
-                                            if (secondResultBoo) {
-                                                Map<String, String> secondProfitParamsMap = new HashMap<>();
-                                                secondProfitParamsMap.put("first", "尊敬的用户：您有一笔二级分润资金已成功入账。");
-                                                secondProfitParamsMap.put("keyword1", String.valueOf(secondParentProfitAmount)+"元");
-                                                secondProfitParamsMap.put("keyword2", sdf.format(new Date()));
-                                                secondProfitParamsMap.put("remark", "可通过“个人中心”--“余额账单”进行查看");
-                                                secondProfitParamsMap.put("descUrl", userInfoUrl);
-                                                wxAction.sendWXModelMsg(String.valueOf(secondParentMap.get("openid")), "VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk", secondProfitParamsMap);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }*/
+                        //发送模板消息并分润
+                        callbackModelMsgAndProfit(orderNo);
                     }else if("FAIL".equals(resultCode)){
                         payService.updatePayOrder("3",resultMsg,"2",orderNo);
                     }else{
@@ -1320,7 +1296,7 @@ public class PayAction extends BaseController {
 
     }
 
-    public void collbackModelMsg(String orderNo) throws Exception {
+    public void callbackModelMsgAndProfit(String orderNo) throws Exception {
         Map<String,Object> orderMap = payService.selectPayOrder(orderNo);
         //发送收款成功模板消息
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -1344,8 +1320,9 @@ public class PayAction extends BaseController {
         //上级分润
         String parentNo = String.valueOf(userMap.get("parent_no"));
         if(isNotEmpty(parentNo)){
+            String oneLevelProfitRate = payService.getParamValue("oneLevelProfitRate");
             Map<String,Object> parentMap = payService.selectUserByUserNo(parentNo);
-            BigDecimal parentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.001")).setScale(2,BigDecimal.ROUND_DOWN);
+            BigDecimal parentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal(oneLevelProfitRate)).setScale(2,BigDecimal.ROUND_DOWN);
             log.info("orderNo="+orderNo+",给上级"+parentNo+"分润"+String.valueOf(parentProfitAmount));
             if(parentProfitAmount.compareTo(new BigDecimal("0.00"))==1){
                 Map<String,Object> profitResultMap = payService.parentProfit(parentNo, orderNo, parentProfitAmount,5);
@@ -1363,8 +1340,9 @@ public class PayAction extends BaseController {
                     //二级分润
                     String secondParendNo = String.valueOf(parentMap.get("parent_no"));
                     if(isNotEmpty(secondParendNo)){
+                        String secondLevelProfitRate = payService.getParamValue("secondLevelProfitRate");
                         Map<String,Object> secondParentMap = payService.selectUserByUserNo(secondParendNo);
-                        BigDecimal secondParentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal("0.0003")).setScale(2,BigDecimal.ROUND_DOWN);
+                        BigDecimal secondParentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal(secondLevelProfitRate)).setScale(2,BigDecimal.ROUND_DOWN);
                         log.info("orderNo="+orderNo+",给上级的上级"+secondParendNo+"分润"+String.valueOf(secondParentProfitAmount));
                         if(secondParentProfitAmount.compareTo(new BigDecimal("0.00"))==1) {
                             Map<String, Object> secondProfitResultMap = payService.parentProfit(secondParendNo, orderNo, secondParentProfitAmount, 6);
@@ -1379,6 +1357,29 @@ public class PayAction extends BaseController {
                                 secondProfitParamsMap.put("remark", "可通过“个人中心”--“余额账单”进行查看");
                                 secondProfitParamsMap.put("descUrl", userInfoUrl);
                                 wxAction.sendWXModelMsg(String.valueOf(secondParentMap.get("openid")), "VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk", secondProfitParamsMap);
+                                //三级分润
+                                String thirdParendNo = String.valueOf(secondParentMap.get("parent_no"));
+                                if(isNotEmpty(thirdParendNo)){
+                                    String thirdLevelProfitRate = payService.getParamValue("thirdLevelProfitRate");
+                                    Map<String,Object> thirdParentMap = payService.selectUserByUserNo(thirdParendNo);
+                                    BigDecimal thirdParentProfitAmount = new BigDecimal(transAmount).multiply(new BigDecimal(thirdLevelProfitRate)).setScale(2,BigDecimal.ROUND_DOWN);
+                                    log.info("orderNo="+orderNo+",给三级"+thirdParendNo+"分润"+String.valueOf(thirdParentProfitAmount));
+                                    if(thirdParentProfitAmount.compareTo(new BigDecimal("0.00"))==1) {
+                                        Map<String, Object> thirdProfitResultMap = payService.parentProfit(thirdParendNo, orderNo, thirdParentProfitAmount, 8);
+                                        payService.insertOperationLog(thirdParendNo, "profit", "user", "订单orderNo=" + orderNo + "分润结果：" + thirdProfitResultMap);
+                                        log.info("三级分润结果thirdProfitResultMap=" + thirdProfitResultMap);
+                                        Boolean thirdResultBoo = (Boolean) thirdProfitResultMap.get("success");
+                                        if (thirdResultBoo) {
+                                            Map<String, String> thirdProfitParamsMap = new HashMap<>();
+                                            thirdProfitParamsMap.put("first", "尊敬的用户：您有一笔三级分润资金已成功入账。");
+                                            thirdProfitParamsMap.put("keyword1", String.valueOf(thirdParentProfitAmount)+"元");
+                                            thirdProfitParamsMap.put("keyword2", sdf.format(new Date()));
+                                            thirdProfitParamsMap.put("remark", "可通过“个人中心”--“余额账单”进行查看");
+                                            thirdProfitParamsMap.put("descUrl", userInfoUrl);
+                                            wxAction.sendWXModelMsg(String.valueOf(thirdParentMap.get("openid")), "VEXUjzoYu2fhuIMPeAKaesH_t-HqmJODcI97TrKuOMk", thirdProfitParamsMap);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

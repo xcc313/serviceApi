@@ -1,5 +1,7 @@
 package com.lzj.utils;
 
+import com.lzj.fc_pay.wofu.WoFuConfig;
+
 import javax.crypto.Cipher;
 import java.security.Key;
 import java.security.Security;
@@ -157,12 +159,16 @@ public class DESPlus {
 
 
     public static void main(String[] args) {
-//        try{
-//            String s =  new DESPlus(Constant.URL_KEY).encrypt("88888888");
-//            System.out.println(s);
-//        }catch (Exception e){
-//            e.printStackTrace();;
-//        }
+        //{"head":{"biz_name":"transfer","result_code":"SUCCESS","result_msg":""},"content":{"order_no":"9063159773756335","result_msg":"交易成功"}}
+        String a = "{\"head\":{\"biz_name\":\"transfer\",\"result_code\":\"SUCCESS\",\"result_msg\":\"\"},\"content\":{\"order_no\":\"9062245613902906\",\"result_msg\":\"交易成功\"}}";
+        try{
+            a = new DESPlus(WoFuConfig.SECRET_KEY).encrypt(a);
+            System.out.println(a);
+            String dataStr = new DESPlus(WoFuConfig.SECRET_KEY).decrypt(a);
+            System.out.println("dataStr=" + dataStr);
+        }catch (Exception e){
+            e.printStackTrace();;
+        }
 
     }
 
